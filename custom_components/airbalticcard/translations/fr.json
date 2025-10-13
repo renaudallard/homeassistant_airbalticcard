@@ -1,0 +1,64 @@
+{
+  "title": "Solde AirBalticCard",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connexion à AirBalticCard",
+        "description": "Saisissez vos identifiants AirBalticCard pour récupérer le solde de vos cartes SIM.",
+        "data": {
+          "username": "Nom d’utilisateur ou adresse e-mail",
+          "password": "Mot de passe"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Nom d’utilisateur ou mot de passe incorrect.",
+      "cannot_connect": "Impossible de se connecter à AirBalticCard.",
+      "unknown": "Une erreur inattendue s’est produite."
+    },
+    "abort": {
+      "already_configured": "Ce compte est déjà configuré."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options AirBalticCard",
+        "description": "Configurez la fréquence de mise à jour et de nouvelle tentative (en secondes). Par défaut : 3600 secondes (1 heure).",
+        "data": {
+          "scan_interval": "Intervalle d’analyse (secondes)",
+          "retry_interval": "Intervalle de nouvelle tentative (secondes)"
+        }
+      }
+    },
+    "error": {
+      "scan_too_short": "L’intervalle d’analyse doit être d’au moins 10 secondes.",
+      "retry_too_short": "L’intervalle de nouvelle tentative doit être d’au moins 5 secondes."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "account_credit": {
+        "name": "Crédit du compte",
+        "device_class": "monetary",
+        "icon": "mdi:wallet"
+      },
+      "total_sim_credit": {
+        "name": "Crédit total des SIM",
+        "device_class": "monetary",
+        "icon": "mdi:cash-multiple"
+      },
+      "sim_balance": {
+        "name": "Solde de la carte SIM",
+        "device_class": "monetary",
+        "icon": "mdi:sim"
+      }
+    },
+    "button": {
+      "refresh": {
+        "name": "Rafraîchir manuellement",
+        "icon": "mdi:refresh"
+      }
+    }
+  }
+}
