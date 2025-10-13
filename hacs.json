@@ -1,0 +1,6 @@
+{
+  "name": "Airbalticcard Corporate Account",
+  "render_readme": true,
+  "domains": ["airbalticcard"],
+  "country": "","zip_regex": ""
+}

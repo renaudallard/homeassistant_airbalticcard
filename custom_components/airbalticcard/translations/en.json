@@ -1,0 +1,64 @@
+{
+  "title": "AirBalticCard SIM Balance",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to AirBalticCard",
+        "description": "Enter your AirBalticCard account credentials to fetch SIM balances.",
+        "data": {
+          "username": "Username or Email",
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Invalid username or password.",
+      "cannot_connect": "Cannot connect to AirBalticCard.",
+      "unknown": "Unexpected error occurred."
+    },
+    "abort": {
+      "already_configured": "This account is already configured."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "AirBalticCard Options",
+        "description": "Configure how often to update and retry if errors occur (in seconds). Default is 3600 seconds (1 hour).",
+        "data": {
+          "scan_interval": "Scan interval (seconds)",
+          "retry_interval": "Retry interval (seconds)"
+        }
+      }
+    },
+    "error": {
+      "scan_too_short": "Scan interval must be at least 10 seconds.",
+      "retry_too_short": "Retry interval must be at least 5 seconds."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "account_credit": {
+        "name": "Account Credit",
+        "device_class": "monetary",
+        "icon": "mdi:wallet"
+      },
+      "total_sim_credit": {
+        "name": "Total SIM Credit",
+        "device_class": "monetary",
+        "icon": "mdi:cash-multiple"
+      },
+      "sim_balance": {
+        "name": "SIM Balance",
+        "device_class": "monetary",
+        "icon": "mdi:sim"
+      }
+    },
+    "button": {
+      "refresh": {
+        "name": "Manual Refresh",
+        "icon": "mdi:refresh"
+      }
+    }
+  }
+}

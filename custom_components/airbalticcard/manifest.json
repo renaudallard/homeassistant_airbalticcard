@@ -1,0 +1,13 @@
+{
+  "domain": "airbalticcard",
+  "name": "AirBalticCard SIM Balance",
+  "version": "1.0.0",
+  "documentation": "https://www.airbalticcard.com/",
+  "dependencies": [],
+  "codeowners": ["@renaudallard"],
+  "requirements": ["beautifulsoup4", "requests"],
+  "config_flow": true,
+  "iot_class": "cloud_polling",
+  "logo": "logo.png",
+  "icon": "icon.png"
+}
