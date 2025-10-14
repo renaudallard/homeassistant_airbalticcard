@@ -40,17 +40,11 @@
     "sensor": {
       "account_credit": {
         "name": "Account Credit",
-        "state": {
-          "unit_of_measurement": "€"
-        },
         "device_class": "monetary",
         "icon": "mdi:wallet"
       },
       "total_sim_credit": {
         "name": "Total SIM Credit",
-        "state": {
-          "unit_of_measurement": "€"
-        },
         "device_class": "monetary",
         "icon": "mdi:cash-multiple"
       },
@@ -58,6 +52,10 @@
         "name": "SIM Balance",
         "device_class": "monetary",
         "icon": "mdi:sim"
+      },
+      "sim_description": {
+        "name": "SIM Description",
+        "icon": "mdi:label"
       }
     },
     "button": {

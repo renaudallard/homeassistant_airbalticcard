@@ -52,6 +52,10 @@
         "name": "SIM Balance",
         "device_class": "monetary",
         "icon": "mdi:sim"
+      },
+      "sim_description": {
+        "name": "SIM Description",
+        "icon": "mdi:label"
       }
     },
     "button": {

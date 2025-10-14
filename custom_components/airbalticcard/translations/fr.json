@@ -52,6 +52,10 @@
         "name": "Solde de la carte SIM",
         "device_class": "monetary",
         "icon": "mdi:sim"
+      },
+      "sim_description": {
+        "name": "Description de la carte SIM",
+        "icon": "mdi:label"
       }
     },
     "button": {
