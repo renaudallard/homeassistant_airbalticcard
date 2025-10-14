@@ -30,6 +30,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     username = entry.data["username"]
     password = entry.data["password"]
 
+    # Use Home Assistant's shared aiohttp session
     session = async_get_clientsession(hass)
     api = AirBalticCardAPI(username, password, session=session)
 
@@ -42,7 +43,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
             await api.login()
             return await api.get_sim_cards()
         except Exception as err:
-            _LOGGER.warning("Failed to fetch AirBalticCard data: %s", err)
+            _LOGGER.warning(
+                "Failed to fetch AirBalticCard data: %s (retry in %ss)",
+                err,
+                retry_interval,
+            )
             raise UpdateFailed(f"Error communicating with AirBalticCard: {err}") from err
 
     coordinator = DataUpdateCoordinator(
