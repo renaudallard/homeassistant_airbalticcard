@@ -30,7 +30,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     username = entry.data["username"]
     password = entry.data["password"]
 
-    # Use Home Assistant's shared aiohttp session
+    # Use HA’s shared aiohttp session
     session = async_get_clientsession(hass)
     api = AirBalticCardAPI(username, password, session=session)
 
@@ -38,7 +38,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     retry_interval = entry.options.get(CONF_RETRY_INTERVAL, DEFAULT_RETRY_INTERVAL)
 
     async def async_update_data():
-        """Fetch data periodically and handle errors gracefully."""
+        """Fetch data periodically and handle errors."""
         try:
             await api.login()
             return await api.get_sim_cards()
@@ -58,6 +58,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         update_interval=timedelta(seconds=scan_interval),
     )
 
+    # ⛔ Blocking: wait for the first refresh before entity setup
     await coordinator.async_config_entry_first_refresh()
 
     hass.data[DOMAIN][entry.entry_id] = {

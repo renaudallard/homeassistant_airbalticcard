@@ -14,6 +14,8 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
     async_add_entities([AirBalticCardRefreshButton(coordinator)], update_before_add=False)
 
+    _LOGGER.debug("AirBalticCard Refresh button registered.")
+
 
 class AirBalticCardRefreshButton(CoordinatorEntity, ButtonEntity):
     """Button entity to manually refresh AirBalticCard data."""
@@ -22,11 +24,16 @@ class AirBalticCardRefreshButton(CoordinatorEntity, ButtonEntity):
     _attr_unique_id = f"{DOMAIN}_refresh"
     _attr_icon = "mdi:refresh"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
+    _attr_translation_key = "refresh"
 
     def __init__(self, coordinator):
         super().__init__(coordinator)
 
     async def async_press(self) -> None:
         """Handle the button press."""
-        _LOGGER.info("Manual refresh triggered for AirBalticCard data")
-        await self.coordinator.async_request_refresh()
+        _LOGGER.info("Manual refresh triggered for AirBalticCard data.")
+        try:
+            await self.coordinator.async_request_refresh()
+            _LOGGER.debug("Manual AirBalticCard refresh completed successfully.")
+        except Exception as err:
+            _LOGGER.warning("Manual refresh failed: %s", err)
