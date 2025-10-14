@@ -1,11 +1,10 @@
 import logging
-import asyncio
 from datetime import timedelta
-import aiohttp
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import (
     DOMAIN,
@@ -31,30 +30,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     username = entry.data["username"]
     password = entry.data["password"]
 
-    # aiohttp session for async API calls
-    session = aiohttp.ClientSession()
+    session = async_get_clientsession(hass)
     api = AirBalticCardAPI(username, password, session=session)
 
-    # Intervals (seconds)
     scan_interval = entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
     retry_interval = entry.options.get(CONF_RETRY_INTERVAL, DEFAULT_RETRY_INTERVAL)
 
     async def async_update_data():
-        """Fetch data periodically and retry gracefully on error."""
-        while True:
-            try:
-                await api.login()
-                sims = await api.get_sim_cards()
-                return sims
-            except Exception as err:
-                _LOGGER.warning(
-                    "Failed to update AirBalticCard data: %s. Retrying in %s seconds...",
-                    err,
-                    retry_interval,
-                )
-                await asyncio.sleep(retry_interval)
+        """Fetch data periodically and handle errors gracefully."""
+        try:
+            await api.login()
+            return await api.get_sim_cards()
+        except Exception as err:
+            _LOGGER.warning("Failed to fetch AirBalticCard data: %s", err)
+            raise UpdateFailed(f"Error communicating with AirBalticCard: {err}") from err
 
-    # Coordinator handles scheduled updates
     coordinator = DataUpdateCoordinator(
         hass,
         _LOGGER,
@@ -63,17 +53,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         update_interval=timedelta(seconds=scan_interval),
     )
 
-    # Initial load
     await coordinator.async_config_entry_first_refresh()
 
-    # Store shared data
     hass.data[DOMAIN][entry.entry_id] = {
         "coordinator": coordinator,
         "api": api,
         "session": session,
     }
 
-    # Load all platforms (sensor + button)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     _LOGGER.info(
@@ -91,16 +78,12 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
     if data:
-        session = data.get("session")
         api = data.get("api")
-
         if hasattr(api, "close"):
             try:
                 await api.close()
             except Exception as e:
                 _LOGGER.debug("Error closing AirBalticCard API session: %s", e)
-        elif session:
-            await session.close()
 
     if unload_ok:
         _LOGGER.info("AirBalticCard integration unloaded successfully")
