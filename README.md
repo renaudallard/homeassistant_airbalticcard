@@ -1,120 +1,186 @@
-# 💳 AirBalticCard SIM Balance for Home Assistant
+# AirBalticCard — Home Assistant Custom Integration
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-41BDF5.svg)](https://hacs.xyz/)
-[![version](https://img.shields.io/badge/version-1.1.2-blue.svg)](https://github.com/renaudallard/homeassistant_airbalticcard)
-[![license](https://img.shields.io/github/license/renaudallard/homeassistant_airbalticcard.svg)](LICENSE)
+Monitor **AirBalticCard** account and SIM balances directly in Home Assistant.
 
-Monitor your **AirBalticCard prepaid SIM cards** and **account balance** directly in [Home Assistant](https://www.home-assistant.io/).  
-This integration automatically fetches SIM balances and account credit, updates them on a schedule, and allows manual refresh from the dashboard.
-
----
-
-## ✨ Features
-
-- 🔐 Secure login to your AirBalticCard account  
-- 📱 Displays **each SIM card balance** and **its label/description**  
-- 💰 Shows **total account credit** and **total SIM balance**  
-- 🎨 Dynamic icon colors for SIM balances:
-  - 🟥 **Red** — Critical (< €2)
-  - 🟧 **Orange** — Warning (< €4)
-  - 🟩 **Normal** — Healthy balance  
-- 🔄 Manual refresh button  
-- 🌐 Fully translated — **English** 🇬🇧 and **French** 🇫🇷  
-- ⚙️ Configurable scan and retry intervals  
-- 🧠 Uses Home Assistant’s `DataUpdateCoordinator` for efficient async updates
+- **Integration domain:** `airbalticcard`
+- **Version:** 1.1.3
+- **HA Compatibility:** Home Assistant **2025.10** (and later)
+- **Python:** 3.13+
+- **IoT class:** `cloud_polling`
+- **Config Flow:** ✅ (UI-based)
+- **Translations:** English, French
+- **Platforms:** `sensor`, `button`
 
 ---
 
-## 🛠️ Installation
+## What it does
 
-### 📦 Option 1 — via [HACS (Custom Repository)](https://hacs.xyz/)
-
-1. Go to **HACS → Integrations → 3-dot menu → Custom repositories**.  
-2. Add the repository URL:  
-Category: **Integration**
-3. Search for **AirBalticCard SIM Balance** in HACS and install it.
-4. Restart Home Assistant.
-
----
-
-### 📂 Option 2 — Manual installation
-
-1. Download the latest release ZIP from [GitHub Releases](https://github.com/renaudallard/homeassistant_airbalticcard/releases).  
-2. Extract the folder `airbalticcard` into your Home Assistant config folder:
-3. Restart Home Assistant.
+- Logs in to **airbalticcard.com** using your credentials.
+- Fetches **account credit** and **per-SIM balances**.
+- Exposes:
+  - **Account credit** sensor (EUR)
+  - **Total SIMs** sensor
+  - **Per-SIM credit** sensors (EUR)
+  - **Per-SIM description/name** sensors
+- Provides a **Manual Refresh** button entity.
+- Balance icon coloring:
+  - **Red** when `< €2`
+  - **Orange** when `< €4`
+  - **Default** when `≥ €4`
+- Adds a `balance_state` attribute: `critical | warning | normal`.
 
 ---
 
-## ⚙️ Configuration
+## Installation
 
-1. In Home Assistant, go to  
-**Settings → Devices & Services → + Add Integration → AirBalticCard SIM Balance**
-2. Enter your **AirBalticCard username and password**
-3. Adjust optional settings:
-- **Scan interval** — how often to update data (default 3600 s)
-- **Retry interval** — how often to retry on connection failure (default 3600 s)
+### Option A — HACS (preferred)
 
-No YAML configuration is required.
+1. In **HACS → Integrations**, search for **AirBalticCard SIM Balance**.
+   - If it doesn’t appear, add the repo as a **Custom repository**:
+     `https://github.com/renaudallard/homeassistant_airbalticcard` (Integration)
+2. Install, then **Restart Home Assistant**.
 
----
+### Option B — Manual
 
-## 🧾 Entities Created
+1. Copy the folder `custom_components/airbalticcard/` into your HA `config` directory.
+2. Ensure these files are present:
 
-| Entity | Example Name | Description |
-|--------|---------------|--------------|
-| `sensor.account_credit` | `Account Credit` | Account-level credit (€) |
-| `sensor.total_sim_credit` | `Total SIM Credit` | Sum of all SIM credits (€) |
-| `sensor.<number>_balance` | `+37120012345 Balance` | Individual SIM balance, dynamic color icon |
-| `sensor.<number>_description` | `+37120012345 Description` | SIM name/label |
-| `button.airbalticcard_refresh` | `AirBalticCard Refresh` | Manually refresh data |
+```
+custom_components/airbalticcard/
+├── __init__.py
+├── airbalticcard_api.py
+├── button.py
+├── config_flow.py
+├── const.py
+├── manifest.json
+├── sensor.py
+├── strings.json
+├── translations/
+│   ├── en.json
+│   └── fr.json
+├── icon.png
+└── logo.png
+```
 
----
-
-## 🎨 Icon Colors (Balance Thresholds)
-
-| Balance (€) | Icon | Severity | Typical HA Color |
-|--------------|------|-----------|------------------|
-| ≥ 4 € | `mdi:sim` | Normal | Gray / Green |
-| 2 – 3.99 € | `mdi:sim-off` | Warning | Orange |
-| < 2 € | `mdi:sim-alert` | Critical | Red |
-
-Each SIM balance entity also exposes an attribute `balance_state` with values:
-`normal`, `warning`, or `critical`.
+3. **Restart Home Assistant**.
 
 ---
 
-## 🧠 Technical Details
+## Configuration
 
-- Uses **async/await** throughout — fully non-blocking.  
-- Data is fetched via **aiohttp** and parsed with **BeautifulSoup4**.  
-- Coordinated via Home Assistant’s `DataUpdateCoordinator`.  
-- Automatically retries and re-authenticates when the session expires.  
-- Compatible with **Python ≥ 3.13** and **Home Assistant 2025.10+**.
+1. Go to **Settings → Devices & Services → Add Integration**.
+2. Search **AirBalticCard**.
+3. Enter your **Username (or Email)** and **Password**.
+4. Finish the flow.
 
----
+### Options (can be changed later)
 
-## 🌐 Translations
-
-| Language | File |
-|-----------|------|
-| English | `translations/en.json` |
-| French | `translations/fr.json` |
-
-More translations are welcome via pull requests.
+- **Scan interval** (seconds, default `3600`) — periodic update frequency.
+- **Retry interval** (seconds, default `3600`) — wait time after a failed attempt.
 
 ---
 
-## 📸 Screenshots
+## Entities
 
-*(Add your own screenshots here once installed)*  
-You can show the entities in a card or custom dashboard:
+> Exact entity IDs depend on your system’s naming. Examples below illustrate typical patterns.
+
+### Sensors
+
+- **Account credit**  
+  `sensor.airbalticcard_account_credit` (EUR)
+
+- **Total SIMs**  
+  `sensor.airbalticcard_total_sims` (number)
+
+- **Per-SIM credit**  
+  `sensor.sim_<number>_credit` (EUR)  
+  Attributes:
+  - `sim_number`
+  - `sim_name`
+  - `balance_state` → `critical | warning | normal`
+
+- **Per-SIM description/name**  
+  `sensor.sim_<number>_description` (text)
+
+> Icon coloring on SIM credit sensors follows the thresholds listed above.
+
+### Button
+
+- **Manual Refresh**  
+  `button.airbalticcard_refresh`  
+  Triggers an immediate data fetch via the coordinator.
+
+---
+
+## Example: Lovelace (Entities card)
 
 ```yaml
 type: entities
 title: AirBalticCard
 entities:
-- sensor.account_credit
-- sensor.total_sim_credit
-- sensor.+37120012345_balance
-- sensor.+37120012345_description
-- button.airbalticcard_refresh
+  - sensor.airbalticcard_account_credit
+  - sensor.airbalticcard_total_sims
+  - button.airbalticcard_refresh
+  # Example SIMs (your entity IDs will differ)
+  - sensor.sim_3712xxxxxxx_credit
+  - sensor.sim_3712xxxxxxx_description
+```
+
+---
+
+## Troubleshooting
+
+- **Invalid auth**: Re-check username/password. Two-factor or captchas on the website can block programmatic login.
+- **Cannot connect**: Temporary site protection or downtime. The integration will retry per the **Retry interval**.
+- **Slow first update**: Initial fetch is synchronous to ensure data availability; subsequent updates are coordinated.
+- **Empty/None data**: If the site structure changes, enable **Debug logs** and open an issue (see below).
+
+### Enable debug logging
+
+```yaml
+logger:
+  default: warning
+  logs:
+    custom_components.airbalticcard: debug
+```
+
+Logs appear in **Settings → System → Logs** (or in `home-assistant.log`).
+
+---
+
+## Privacy & Security
+
+- Credentials are stored in Home Assistant’s config entries.
+- No data is sent anywhere except to **airbalticcard.com** for fetching your balances.
+- Uses HA’s shared `aiohttp` session for connection pooling.
+
+---
+
+## Changelog
+
+### 1.1.3
+- README refresh with clear HA 2025.10 compatibility statement.
+- Clarified entities and attributes; improved troubleshooting section.
+- Minor i18n wording polish.
+
+### 1.1.2
+- HACS compatibility, badges and metadata updates.
+- Improved coordinator behavior and logging.
+
+### 1.1.1 and earlier
+- Initial async client, sensors, manual refresh button, color thresholds, and translations.
+
+---
+
+## Support & Contributions
+
+- **Repository:** `https://github.com/renaudallard/homeassistant_airbalticcard`
+- **Issues:** Please include debug logs and your HA version.
+
+Contributions welcome: bug reports, PRs, translations.
+
+---
+
+## License
+
+MIT (see repository).
