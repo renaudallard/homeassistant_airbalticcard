@@ -1,0 +1,57 @@
+# 202510231420
+name: Release on manifest version change
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - "custom_components/airbalticcard/manifest.json"
+      - ".github/workflows/release-on-manifest.yml"
+      - "hacs.json"
+      - "README.md"
+      - "custom_components/airbalticcard/**"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read version from manifest
+        id: ver
+        run: |
+          VERSION=$(jq -r '.version' custom_components/airbalticcard/manifest.json)
+          if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
+            echo "Manifest version missing"; exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Build release zip
+        run: |
+          set -e
+          VER="${{ steps.ver.outputs.version }}"
+          ZIP="airbalticcard-v${VER}.zip"
+          mkdir -p dist
+          zip -r "dist/${ZIP}" \
+            custom_components/airbalticcard \
+            hacs.json \
+            README.md \
+            -x "*/__pycache__/*" "*/.mypy_cache/*" "*/.pytest_cache/*" "*.pyc" "*.pyo"
+
+      - name: Create or update release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: v${{ steps.ver.outputs.version }}
+          name: v${{ steps.ver.outputs.version }}
+          allowUpdates: true
+          makeLatest: true
+          draft: false
+          prerelease: false
+          generateReleaseNotes: true
+          artifacts: dist/airbalticcard-v${{ steps.ver.outputs.version }}.zip
