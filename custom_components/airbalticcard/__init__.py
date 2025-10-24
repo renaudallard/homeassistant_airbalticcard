@@ -277,12 +277,17 @@ async def _async_migrate_device_entries(
             continue
 
         new_identifier = (DOMAIN, f"{runtime_data.account_id}_{value}")
+
         update_kwargs: dict[str, Any] = {
-            "new_identifiers": {new_identifier},
             "manufacturer": "AirBaltic",
             "model": "Prepaid SIM",
         }
-        if account_device_id:
+
+        should_update_identifiers = new_identifier not in device_entry.identifiers
+        if should_update_identifiers:
+            update_kwargs["new_identifiers"] = {new_identifier}
+
+        if account_device_id and device_entry.via_device_id != account_device_id:
             update_kwargs["via_device_id"] = account_device_id
 
         existing_device = device_registry.async_get_device({new_identifier})
@@ -313,7 +318,8 @@ async def _async_migrate_device_entries(
             migrated += 1
             continue
 
-        device_registry.async_update_device(device_entry.id, **update_kwargs)
+        if should_update_identifiers or len(update_kwargs) > 1:
+            device_registry.async_update_device(device_entry.id, **update_kwargs)
         migrated += 1
 
     if migrated:
