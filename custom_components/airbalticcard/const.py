@@ -1,14 +1,22 @@
-DOMAIN = "airbalticcard"
+"""Constants for the AirBalticCard integration."""
 
-CONF_USERNAME = "username"
-CONF_PASSWORD = "password"
+from __future__ import annotations
+
+from typing import Final
+
+from homeassistant.const import Platform
+
+DOMAIN: Final = "airbalticcard"
+
+CONF_USERNAME: Final = "username"
+CONF_PASSWORD: Final = "password"
 
 # Configuration options
-CONF_SCAN_INTERVAL = "scan_interval"
-CONF_RETRY_INTERVAL = "retry_interval"
+CONF_SCAN_INTERVAL: Final = "scan_interval"
+CONF_RETRY_INTERVAL: Final = "retry_interval"
 
 # ⏱️ Default intervals: 3600 seconds = 1 hour
-DEFAULT_SCAN_INTERVAL = 3600
-DEFAULT_RETRY_INTERVAL = 3600
+DEFAULT_SCAN_INTERVAL: Final = 3600
+DEFAULT_RETRY_INTERVAL: Final = 3600
 
-PLATFORMS = ["sensor", "button"]
+PLATFORMS: Final = (Platform.SENSOR, Platform.BUTTON)
