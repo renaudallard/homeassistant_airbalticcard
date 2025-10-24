@@ -1,7 +1,7 @@
 {
   "domain": "airbalticcard",
   "name": "AirBalticCard SIM Balance",
-  "version": "1.1.3",
+  "version": "1.1.4",
   "documentation": "https://www.airbalticcard.com/",
   "dependencies": [],
   "codeowners": ["@renaudallard"],

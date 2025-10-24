@@ -3,7 +3,7 @@
 Monitor **AirBalticCard** account and SIM balances directly in Home Assistant.
 
 - **Integration domain:** `airbalticcard`
-- **Version:** 1.1.3
+- **Version:** 1.1.4
 - **HA Compatibility:** Home Assistant **2025.10** (and later)
 - **Python:** 3.13+
 - **IoT class:** `cloud_polling`
@@ -19,10 +19,11 @@ Monitor **AirBalticCard** account and SIM balances directly in Home Assistant.
 - Fetches **account credit** and **per-SIM balances**.
 - Exposes:
   - **Account credit** sensor (EUR)
-  - **Total SIMs** sensor
+  - **Total SIM credit** sensor (EUR)
   - **Per-SIM credit** sensors (EUR)
   - **Per-SIM description/name** sensors
-- Provides a **Manual Refresh** button entity.
+- Provides a **Manual Refresh** button entity (diagnostics category) tied to the account device.
+- Automatically migrates legacy entity and device identifiers to account-scoped formats for safe multi-account setups.
 - Balance icon coloring:
   - **Red** when `< €2`
   - **Orange** when `< €4`
@@ -53,8 +54,11 @@ custom_components/airbalticcard/
 ├── config_flow.py
 ├── const.py
 ├── manifest.json
+├── models.py
 ├── sensor.py
 ├── strings.json
+├── icons/
+│   └── airbalticcard.svg
 ├── translations/
 │   ├── en.json
 │   └── fr.json
@@ -86,29 +90,31 @@ custom_components/airbalticcard/
 
 ### Sensors
 
-- **Account credit**  
+- **Account credit**
   `sensor.airbalticcard_account_credit` (EUR)
 
-- **Total SIMs**  
-  `sensor.airbalticcard_total_sims` (number)
+- **Total SIM credit**
+  `sensor.airbalticcard_total_sim_credit` (EUR)
 
-- **Per-SIM credit**  
-  `sensor.sim_<number>_credit` (EUR)  
+- **Per-SIM credit**
+  `sensor.sim_<number>_balance` (EUR)
   Attributes:
   - `sim_number`
   - `sim_name`
   - `balance_state` → `critical | warning | normal`
 
-- **Per-SIM description/name**  
+- **Per-SIM description/name**
   `sensor.sim_<number>_description` (text)
+
+> Each SIM is registered as its own device linked via the parent AirBalticCard account device for better grouping in the Devices & Entities view.
 
 > Icon coloring on SIM credit sensors follows the thresholds listed above.
 
 ### Button
 
-- **Manual Refresh**  
-  `button.airbalticcard_refresh`  
-  Triggers an immediate data fetch via the coordinator.
+- **Manual Refresh**
+  `button.airbalticcard_refresh`
+  Diagnostic button that triggers an immediate data fetch for the configured account.
 
 ---
 
@@ -119,10 +125,10 @@ type: entities
 title: AirBalticCard
 entities:
   - sensor.airbalticcard_account_credit
-  - sensor.airbalticcard_total_sims
+  - sensor.airbalticcard_total_sim_credit
   - button.airbalticcard_refresh
   # Example SIMs (your entity IDs will differ)
-  - sensor.sim_3712xxxxxxx_credit
+  - sensor.sim_3712xxxxxxx_balance
   - sensor.sim_3712xxxxxxx_description
 ```
 
@@ -157,6 +163,11 @@ Logs appear in **Settings → System → Logs** (or in `home-assistant.log`).
 ---
 
 ## Changelog
+
+### 1.1.4
+- Refactored the integration to modern Home Assistant patterns (type hints, dataclasses, entity naming).
+- Scoped entity unique IDs and device registry entries per account, ensuring safe multi-account use and smooth migration.
+- Updated device metadata hierarchy so SIM devices link through the parent AirBalticCard account.
 
 ### 1.1.3
 - README refresh with clear HA 2025.10 compatibility statement.
