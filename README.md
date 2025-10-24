@@ -57,13 +57,9 @@ custom_components/airbalticcard/
 ├── models.py
 ├── sensor.py
 ├── strings.json
-├── icons/
-│   └── airbalticcard.svg
-├── translations/
-│   ├── en.json
-│   └── fr.json
-├── icon.png
-└── logo.png
+└── translations/
+    ├── en.json
+    └── fr.json
 ```
 
 3. **Restart Home Assistant**.
