@@ -172,6 +172,7 @@ class AirBalticCardSimBalanceSensor(CoordinatorEntity[Mapping[str, Any]], Sensor
 
     _attr_device_class = SensorDeviceClass.MONETARY
     _attr_native_unit_of_measurement = CURRENCY_EURO
+    _attr_translation_key = "sim_balance"
     _attr_has_entity_name = True
 
     def __init__(
@@ -184,7 +185,7 @@ class AirBalticCardSimBalanceSensor(CoordinatorEntity[Mapping[str, Any]], Sensor
         self._account_id = account_id
         self._sim_number = sim_number
         self._attr_unique_id = f"{DOMAIN}_{account_id}_{sim_number}_balance"
-        self._attr_name = f"{sim_number} Balance"
+        self._attr_name = "Balance"
 
     @staticmethod
     def _parse_credit(text: str) -> float | None:
@@ -269,7 +270,7 @@ class AirBalticCardSimDescriptionSensor(CoordinatorEntity[Mapping[str, Any]], Se
         self._account_id = account_id
         self._sim_number = sim_number
         self._attr_unique_id = f"{DOMAIN}_{account_id}_{sim_number}_description"
-        self._attr_name = f"{sim_number} Description"
+        self._attr_name = "Description"
 
     @property
     def _sim_data(self):
