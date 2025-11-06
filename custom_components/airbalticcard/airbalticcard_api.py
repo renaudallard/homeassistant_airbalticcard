@@ -39,7 +39,12 @@ class AirBalticCardAPI:
             text = await resp.text()
         soup = BeautifulSoup(text, "html.parser")
         nonce_input = soup.find("input", {"name": "woocommerce-login-nonce"})
-        return nonce_input.get("value") if nonce_input else ""
+        if not nonce_input:
+            raise ConnectionError("Could not retrieve login nonce from page")
+        nonce = nonce_input.get("value")
+        if not nonce:
+            raise ConnectionError("Login nonce field is empty")
+        return nonce
 
     async def login(self):
         """Perform login."""
@@ -56,13 +61,49 @@ class AirBalticCardAPI:
         async with session.post(LOGIN_URL, data=payload, allow_redirects=True, timeout=15) as resp:
             text = await resp.text()
 
-        if "logout" not in text.lower():
+        if not self._is_logged_in(text):
             raise ValueError("Invalid username or password")
 
         self._logged_in = True
         _LOGGER.info("Login successful for %s", self._username)
 
     def _is_logged_in(self, html: str) -> bool:
+        """Check if user is logged in based on page content.
+
+        Uses multiple indicators for robust authentication verification:
+        - Presence of logout link
+        - Absence of login form
+        - Presence of WooCommerce error messages indicating failed login
+        """
+        soup = BeautifulSoup(html, "html.parser")
+
+        # Check for WooCommerce error messages (indicates login failure)
+        error_indicators = [
+            soup.find("ul", class_="woocommerce-error"),
+            soup.find("div", class_="woocommerce-error"),
+            soup.find(string=lambda text: text and "incorrect" in text.lower()),
+            soup.find(string=lambda text: text and "invalid" in text.lower() and "username" in text.lower()),
+        ]
+        if any(error_indicators):
+            return False
+
+        # Check for logout link (primary indicator of logged-in state)
+        logout_link = soup.find("a", string=lambda text: text and "logout" in text.lower())
+        if logout_link:
+            return True
+
+        # Alternative check: look for logout in href attributes
+        logout_href = soup.find("a", href=lambda href: href and "logout" in href.lower())
+        if logout_href:
+            return True
+
+        # Check if login form is still present (indicates NOT logged in)
+        login_form = soup.find("input", {"name": "woocommerce-login-nonce"})
+        if login_form:
+            return False
+
+        # Fallback: check for "logout" text anywhere in the page
+        # This is less reliable but kept for backward compatibility
         return "logout" in html.lower()
 
     async def _fetch_dashboard(self) -> BeautifulSoup:
