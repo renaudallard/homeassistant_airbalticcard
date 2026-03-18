@@ -33,9 +33,8 @@ class AirBalticCardAPI:
             await self._session.close()
 
     @staticmethod
-    def _extract_nonce(html: str) -> str | None:
-        """Extract the WooCommerce login nonce from HTML."""
-        soup = BeautifulSoup(html, "html.parser")
+    def _extract_nonce_from_soup(soup: BeautifulSoup) -> str | None:
+        """Extract the WooCommerce login nonce from a parsed page."""
         nonce_input = soup.find("input", {"name": "woocommerce-login-nonce"})
         if not nonce_input:
             return None
@@ -44,18 +43,15 @@ class AirBalticCardAPI:
             nonce = nonce[0] if nonce else ""
         return str(nonce) if nonce else None
 
-    async def login(self, html: str | None = None) -> str:
-        """Perform login and return the response HTML.
+    async def login(self, soup: BeautifulSoup | None = None) -> BeautifulSoup:
+        """Perform login and return the parsed response page.
 
-        If *html* is provided, the nonce is extracted from it directly
+        If *soup* is provided, the nonce is extracted from it directly
         instead of making an extra GET request.
         """
         session = await self._get_session()
 
-        if html:
-            nonce = self._extract_nonce(html)
-        else:
-            nonce = None
+        nonce = self._extract_nonce_from_soup(soup) if soup else None
 
         if not nonce:
             async with session.get(ACCOUNT_URL, timeout=_TIMEOUT) as resp:
@@ -64,7 +60,8 @@ class AirBalticCardAPI:
                         f"Login page unavailable (HTTP {resp.status})"
                     )
                 text = await resp.text()
-            nonce = self._extract_nonce(text)
+            soup = BeautifulSoup(text, "html.parser")
+            nonce = self._extract_nonce_from_soup(soup)
             if not nonce:
                 raise ConnectionError("Could not retrieve login nonce from page")
 
@@ -83,13 +80,15 @@ class AirBalticCardAPI:
         ) as resp:
             text = await resp.text()
 
-        if not self._is_logged_in(text):
+        result_soup = BeautifulSoup(text, "html.parser")
+        if not self._is_logged_in(result_soup, text):
             raise ValueError("Invalid username or password")
 
         _LOGGER.info("Login successful for %s", self._username)
-        return text
+        return result_soup
 
-    def _is_logged_in(self, html: str) -> bool:
+    @staticmethod
+    def _is_logged_in(soup: BeautifulSoup, html: str) -> bool:
         """Check if user is logged in based on page content.
 
         Uses multiple indicators for robust authentication verification:
@@ -97,8 +96,6 @@ class AirBalticCardAPI:
         - Absence of login form
         - Presence of WooCommerce error messages indicating failed login
         """
-        soup = BeautifulSoup(html, "html.parser")
-
         # Check for WooCommerce error containers (indicates login failure)
         wc_error = soup.find("ul", class_="woocommerce-error") or soup.find(
             "div", class_="woocommerce-error"
@@ -123,7 +120,6 @@ class AirBalticCardAPI:
             return False
 
         # Fallback: check for "logout" text anywhere in the page
-        # This is less reliable but kept for backward compatibility
         return "logout" in html.lower()
 
     async def _fetch_dashboard(self) -> BeautifulSoup:
@@ -131,16 +127,18 @@ class AirBalticCardAPI:
         async with session.get(ACCOUNT_URL, timeout=_TIMEOUT) as resp:
             text = await resp.text()
 
-        if not self._is_logged_in(text):
+        soup = BeautifulSoup(text, "html.parser")
+
+        if not self._is_logged_in(soup, text):
             _LOGGER.info("Session expired — reauthenticating...")
-            # Pass the page we already fetched so login() can extract
-            # the nonce without an extra GET request.  The login POST
-            # response (after redirect) is the dashboard page itself.
-            text = await self.login(html=text)
-            if not self._is_logged_in(text):
+            # Pass the soup we already parsed so login() can extract
+            # the nonce without an extra GET or parse.  login() returns
+            # the parsed response page directly.
+            soup = await self.login(soup=soup)
+            if not self._is_logged_in(soup, str(soup)):
                 raise ValueError("Could not reestablish session after re-login")
 
-        return BeautifulSoup(text, "html.parser")
+        return soup
 
     async def get_sim_cards(self) -> Dict[str, Any]:
         """Fetch SIM cards and account-level credit."""
