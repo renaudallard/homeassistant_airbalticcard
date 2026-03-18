@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="images/logo.png" alt="AirBalticCard logo">
+</p>
+
 # AirBalticCard — Home Assistant Custom Integration
 
 Monitor **AirBalticCard** account and SIM balances directly in Home Assistant.
@@ -57,6 +61,9 @@ custom_components/airbalticcard/
 ├── models.py
 ├── sensor.py
 ├── strings.json
+├── brand/
+│   ├── icon.png
+│   └── logo.png
 └── translations/
     ├── en.json
     └── fr.json
