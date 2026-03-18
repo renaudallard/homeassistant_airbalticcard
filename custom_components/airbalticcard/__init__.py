@@ -340,9 +340,9 @@ async def _async_migrate_device_entries(
             migrated += 1
             continue
 
-        if should_update_identifiers or len(update_kwargs) > 1:
+        if should_update_identifiers or len(update_kwargs) > 2:
             device_registry.async_update_device(device_entry.id, **update_kwargs)
-        migrated += 1
+            migrated += 1
 
     if migrated:
         _LOGGER.info(
