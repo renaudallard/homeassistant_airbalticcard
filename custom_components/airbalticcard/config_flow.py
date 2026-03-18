@@ -103,11 +103,11 @@ class AirBalticCardOptionsFlow(config_entries.OptionsFlow):
                 vol.Required(
                     CONF_SCAN_INTERVAL,
                     default=current.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
-                ): vol.All(vol.Coerce(int), vol.Range(min=10, max=86400)),
+                ): vol.Coerce(int),
                 vol.Required(
                     CONF_RETRY_INTERVAL,
                     default=current.get(CONF_RETRY_INTERVAL, DEFAULT_RETRY_INTERVAL),
-                ): vol.All(vol.Coerce(int), vol.Range(min=5, max=86400)),
+                ): vol.Coerce(int),
             }
         )
 
