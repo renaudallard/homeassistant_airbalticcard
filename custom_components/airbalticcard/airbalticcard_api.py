@@ -43,10 +43,12 @@ class AirBalticCardAPI:
         nonce_input = soup.find("input", {"name": "woocommerce-login-nonce"})
         if not nonce_input:
             raise ConnectionError("Could not retrieve login nonce from page")
-        nonce = nonce_input.get("value")
+        nonce = nonce_input.get("value", "")
+        if isinstance(nonce, list):
+            nonce = nonce[0] if nonce else ""
         if not nonce:
             raise ConnectionError("Login nonce field is empty")
-        return nonce
+        return str(nonce)
 
     async def login(self):
         """Perform login."""
@@ -89,18 +91,15 @@ class AirBalticCardAPI:
             return False
 
         # Check for logout link (primary indicator of logged-in state)
-        logout_link = soup.find(
-            "a", string=lambda text: text and "logout" in text.lower()
-        )
-        if logout_link:
-            return True
-
-        # Alternative check: look for logout in href attributes
-        logout_href = soup.find(
-            "a", href=lambda href: href and "logout" in href.lower()
-        )
-        if logout_href:
-            return True
+        for link in soup.find_all("a"):
+            link_text = link.get_text(strip=True)
+            if link_text and "logout" in link_text.lower():
+                return True
+            href = link.get("href", "")
+            if isinstance(href, list):
+                href = href[0] if href else ""
+            if href and "logout" in href.lower():
+                return True
 
         # Check if login form is still present (indicates NOT logged in)
         login_form = soup.find("input", {"name": "woocommerce-login-nonce"})
@@ -156,7 +155,10 @@ class AirBalticCardAPI:
             if not sim_container:
                 continue
 
-            sim_number = sim_container.get("data-number", "").strip()
+            raw_number = sim_container.get("data-number", "")
+            if isinstance(raw_number, list):
+                raw_number = raw_number[0] if raw_number else ""
+            sim_number = str(raw_number).strip()
             label_el = sim_container.find("span", class_="js-sim-label-value")
             sim_name = label_el.get_text(strip=True) if label_el else "Unnamed"
 
