@@ -36,9 +36,9 @@ class AirBalticCardConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             password = user_input[CONF_PASSWORD]
 
             try:
-                await self._async_validate_login(username, password)
                 await self.async_set_unique_id(username)
                 self._abort_if_unique_id_configured()
+                await self._async_validate_login(username, password)
 
                 return self.async_create_entry(
                     title=f"AirBalticCard ({username})",
