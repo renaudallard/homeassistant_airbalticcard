@@ -12,7 +12,9 @@ DASHBOARD_URL = "https://airbalticcard.com/my-account/"
 class AirBalticCardAPI:
     """Async API client for AirBalticCard."""
 
-    def __init__(self, username: str, password: str, session: aiohttp.ClientSession | None = None):
+    def __init__(
+        self, username: str, password: str, session: aiohttp.ClientSession | None = None
+    ):
         self._username = username
         self._password = password
         self._session = session
@@ -58,7 +60,9 @@ class AirBalticCardAPI:
             "login": "Log in",
         }
 
-        async with session.post(LOGIN_URL, data=payload, allow_redirects=True, timeout=15) as resp:
+        async with session.post(
+            LOGIN_URL, data=payload, allow_redirects=True, timeout=15
+        ) as resp:
             text = await resp.text()
 
         if not self._is_logged_in(text):
@@ -77,23 +81,24 @@ class AirBalticCardAPI:
         """
         soup = BeautifulSoup(html, "html.parser")
 
-        # Check for WooCommerce error messages (indicates login failure)
-        error_indicators = [
-            soup.find("ul", class_="woocommerce-error"),
-            soup.find("div", class_="woocommerce-error"),
-            soup.find(string=lambda text: text and "incorrect" in text.lower()),
-            soup.find(string=lambda text: text and "invalid" in text.lower() and "username" in text.lower()),
-        ]
-        if any(error_indicators):
+        # Check for WooCommerce error containers (indicates login failure)
+        wc_error = soup.find("ul", class_="woocommerce-error") or soup.find(
+            "div", class_="woocommerce-error"
+        )
+        if wc_error:
             return False
 
         # Check for logout link (primary indicator of logged-in state)
-        logout_link = soup.find("a", string=lambda text: text and "logout" in text.lower())
+        logout_link = soup.find(
+            "a", string=lambda text: text and "logout" in text.lower()
+        )
         if logout_link:
             return True
 
         # Alternative check: look for logout in href attributes
-        logout_href = soup.find("a", href=lambda href: href and "logout" in href.lower())
+        logout_href = soup.find(
+            "a", href=lambda href: href and "logout" in href.lower()
+        )
         if logout_href:
             return True
 
@@ -125,10 +130,7 @@ class AirBalticCardAPI:
         """Fetch SIM cards and account-level credit."""
         soup = await self._fetch_dashboard()
 
-        result: Dict[str, Any] = {
-            "account_credit": None,
-            "sims": []
-        }
+        result: Dict[str, Any] = {"account_credit": None, "sims": []}
 
         # --- Account-level credit ---
         account_block = soup.find("div", class_="sideTable_side")
@@ -165,11 +167,13 @@ class AirBalticCardAPI:
                     sim_credit = text.replace("€", "").replace(",", ".").strip()
                     break
 
-            result["sims"].append({
-                "number": sim_number,
-                "name": sim_name,
-                "credit": sim_credit or "0.00",
-            })
+            result["sims"].append(
+                {
+                    "number": sim_number,
+                    "name": sim_name,
+                    "credit": sim_credit or "0.00",
+                }
+            )
 
         _LOGGER.debug(
             "Parsed account credit: %s, %d SIM cards",
