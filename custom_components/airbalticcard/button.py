@@ -8,6 +8,7 @@ from typing import Any
 from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import (
@@ -77,10 +78,10 @@ class AirBalticCardRefreshButton(
         return self.coordinator.last_update_success
 
     @property
-    def device_info(self) -> dict[str, Any]:
-        return {
-            "identifiers": {(DOMAIN, f"{self._account_id}_account")},
-            "name": f"AirBalticCard Account ({self._username})",
-            "manufacturer": "AirBaltic",
-            "model": "Prepaid SIM Platform",
-        }
+    def device_info(self) -> DeviceInfo:
+        return DeviceInfo(
+            identifiers={(DOMAIN, f"{self._account_id}_account")},
+            name=f"AirBalticCard Account ({self._username})",
+            manufacturer="AirBaltic",
+            model="Prepaid SIM Platform",
+        )

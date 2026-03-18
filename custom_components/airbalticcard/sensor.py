@@ -10,6 +10,7 @@ from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CURRENCY_EURO
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
@@ -113,13 +114,13 @@ class AirBalticCardAccountSensor(
         return self.coordinator.last_update_success
 
     @property
-    def device_info(self):
-        return {
-            "identifiers": {(DOMAIN, f"{self._account_id}_account")},
-            "name": f"AirBalticCard Account ({self._username})",
-            "manufacturer": "AirBaltic",
-            "model": "Prepaid SIM Platform",
-        }
+    def device_info(self) -> DeviceInfo:
+        return DeviceInfo(
+            identifiers={(DOMAIN, f"{self._account_id}_account")},
+            name=f"AirBalticCard Account ({self._username})",
+            manufacturer="AirBaltic",
+            model="Prepaid SIM Platform",
+        )
 
 
 # ================================================================
@@ -171,13 +172,13 @@ class AirBalticCardTotalSimCreditSensor(
         return self.coordinator.last_update_success
 
     @property
-    def device_info(self):
-        return {
-            "identifiers": {(DOMAIN, f"{self._account_id}_account")},
-            "name": f"AirBalticCard Account ({self._username})",
-            "manufacturer": "AirBaltic",
-            "model": "Prepaid SIM Platform",
-        }
+    def device_info(self) -> DeviceInfo:
+        return DeviceInfo(
+            identifiers={(DOMAIN, f"{self._account_id}_account")},
+            name=f"AirBalticCard Account ({self._username})",
+            manufacturer="AirBaltic",
+            model="Prepaid SIM Platform",
+        )
 
 
 # ================================================================
@@ -254,14 +255,14 @@ class AirBalticCardSimBalanceSensor(
         return self.coordinator.last_update_success
 
     @property
-    def device_info(self):
-        return {
-            "identifiers": {(DOMAIN, f"{self._account_id}_{self._sim_number}")},
-            "name": f"SIM {self._sim_number}",
-            "manufacturer": "AirBaltic",
-            "model": "Prepaid SIM",
-            "via_device": (DOMAIN, f"{self._account_id}_account"),
-        }
+    def device_info(self) -> DeviceInfo:
+        return DeviceInfo(
+            identifiers={(DOMAIN, f"{self._account_id}_{self._sim_number}")},
+            name=f"SIM {self._sim_number}",
+            manufacturer="AirBaltic",
+            model="Prepaid SIM",
+            via_device=(DOMAIN, f"{self._account_id}_account"),
+        )
 
 
 # ================================================================
@@ -308,11 +309,11 @@ class AirBalticCardSimDescriptionSensor(
         return self.coordinator.last_update_success
 
     @property
-    def device_info(self):
-        return {
-            "identifiers": {(DOMAIN, f"{self._account_id}_{self._sim_number}")},
-            "name": f"SIM {self._sim_number}",
-            "manufacturer": "AirBaltic",
-            "model": "Prepaid SIM",
-            "via_device": (DOMAIN, f"{self._account_id}_account"),
-        }
+    def device_info(self) -> DeviceInfo:
+        return DeviceInfo(
+            identifiers={(DOMAIN, f"{self._account_id}_{self._sim_number}")},
+            name=f"SIM {self._sim_number}",
+            manufacturer="AirBaltic",
+            model="Prepaid SIM",
+            via_device=(DOMAIN, f"{self._account_id}_account"),
+        )
