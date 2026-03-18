@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.2.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-1.2.1-blue" alt="Version">
   <img src="https://img.shields.io/badge/HA-2025.10%2B-41BDF5" alt="Home Assistant">
   <img src="https://img.shields.io/badge/Python-3.13%2B-3776AB" alt="Python">
   <img src="https://img.shields.io/badge/IoT%20class-cloud__polling-yellow" alt="IoT class">
@@ -145,6 +145,11 @@ Logs appear in **Settings > System > Logs** or in `home-assistant.log`.
 ---
 
 ## Changelog
+
+### 1.2.1
+- Reduced redundant BeautifulSoup parsing (normal path from 2 parses to 1, re-auth from 5 to 3).
+- Module-level HTTP timeout constant instead of per-request allocation.
+- Reduced repeated SIM data lookups in balance sensor properties.
 
 ### 1.2.0
 - Fixed session leak in config flow login validation.

@@ -24,7 +24,7 @@ class AirBalticCardAPI:
         if self._session is None:
             self._own_session = True
             self._session = aiohttp.ClientSession(
-                headers={"User-Agent": "HomeAssistant-AirBalticCard/1.2.0"}
+                headers={"User-Agent": "HomeAssistant-AirBalticCard/1.2.1"}
             )
         return self._session
 
