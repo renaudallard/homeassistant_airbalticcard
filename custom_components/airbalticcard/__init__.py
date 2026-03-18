@@ -55,7 +55,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def async_update_data() -> dict[str, Any]:
         """Fetch data periodically and handle errors."""
         try:
-            await api.login()
             data = await api.get_sim_cards()
         except Exception as err:
             _LOGGER.warning(
@@ -64,9 +63,14 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
                 retry_interval,
             )
             coordinator_obj = coordinator_ref["coordinator"]
-            if coordinator_obj and coordinator_obj.update_interval != retry_interval_delta:
+            if (
+                coordinator_obj
+                and coordinator_obj.update_interval != retry_interval_delta
+            ):
                 coordinator_obj.update_interval = retry_interval_delta
-            raise UpdateFailed(f"Error communicating with AirBalticCard: {err}") from err
+            raise UpdateFailed(
+                f"Error communicating with AirBalticCard: {err}"
+            ) from err
 
         coordinator_obj = coordinator_ref["coordinator"]
         if coordinator_obj and coordinator_obj.update_interval != success_interval:
@@ -178,7 +182,10 @@ async def _async_migrate_device_entries(
     migrated = 0
 
     if account_device is None:
-        if legacy_account_device and entry.entry_id in legacy_account_device.config_entries:
+        if (
+            legacy_account_device
+            and entry.entry_id in legacy_account_device.config_entries
+        ):
             device_registry.async_update_device(
                 legacy_account_device.id,
                 new_identifiers={account_identifier_new},
