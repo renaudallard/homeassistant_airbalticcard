@@ -80,10 +80,10 @@ custom_components/airbalticcard/
 3. Enter your **Username (or Email)** and **Password**.
 4. Finish the flow.
 
-### Options (can be changed later)
+### Options (can be changed later, takes effect immediately)
 
-- **Scan interval** (seconds, default `3600`) — periodic update frequency.
-- **Retry interval** (seconds, default `3600`) — wait time after a failed attempt.
+- **Scan interval** (seconds, default `3600`, range 10-86400) — periodic update frequency.
+- **Retry interval** (seconds, default `3600`, range 5-86400) — wait time after a failed attempt.
 
 ---
 
@@ -141,7 +141,7 @@ entities:
 
 - **Invalid auth**: Re-check username/password. Two-factor or captchas on the website can block programmatic login.
 - **Cannot connect**: Temporary site protection or downtime. The integration will retry per the **Retry interval**.
-- **Slow first update**: Initial fetch is synchronous to ensure data availability; subsequent updates are coordinated.
+- **Slow first update**: Initial fetch is awaited before entity setup to ensure data availability; subsequent updates are coordinated.
 - **Empty/None data**: If the site structure changes, enable **Debug logs** and open an issue (see below).
 
 ### Enable debug logging
