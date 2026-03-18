@@ -133,8 +133,7 @@ class AirBalticCardAPI:
         result: Dict[str, Any] = {"account_credit": None, "sims": []}
 
         # --- Account-level credit ---
-        account_block = soup.find("div", class_="sideTable_side")
-        if account_block:
+        for account_block in soup.find_all("div", class_="sideTable_side"):
             title = account_block.find("div", class_="sideTable_title")
             if title and "available credit for account" in title.text.lower():
                 credit_el = account_block.find("div", class_="sideTable_text")
@@ -148,6 +147,7 @@ class AirBalticCardAPI:
                     )
                     result["account_credit"] = credit_val
                     _LOGGER.debug("Account credit found: %s EUR", credit_val)
+                break
 
         # --- SIM cards ---
         rows = soup.find_all("tr")
