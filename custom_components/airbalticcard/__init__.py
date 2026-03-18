@@ -110,12 +110,12 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     async def _async_options_updated(
         hass: HomeAssistant, cfg_entry: ConfigEntry
     ) -> None:
-        new_success, _ = _get_intervals(cfg_entry)
+        new_success, new_retry = _get_intervals(cfg_entry)
         coordinator.update_interval = new_success
         _LOGGER.info(
             "AirBalticCard options updated (scan=%ss, retry=%ss)",
             new_success.total_seconds(),
-            _.total_seconds(),
+            new_retry.total_seconds(),
         )
 
     entry.async_on_unload(entry.add_update_listener(_async_options_updated))
