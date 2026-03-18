@@ -18,7 +18,6 @@ class AirBalticCardAPI:
         self._password = password
         self._session = session
         self._own_session = False
-        self._logged_in = False
 
     async def _get_session(self) -> aiohttp.ClientSession:
         if self._session is None:
@@ -83,7 +82,6 @@ class AirBalticCardAPI:
         if not self._is_logged_in(text):
             raise ValueError("Invalid username or password")
 
-        self._logged_in = True
         _LOGGER.info("Login successful for %s", self._username)
         return text
 
