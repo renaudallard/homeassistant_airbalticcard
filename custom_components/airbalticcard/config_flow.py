@@ -15,10 +15,12 @@ from .const import (
 from .airbalticcard_api import AirBalticCardAPI
 
 
-DATA_SCHEMA = vol.Schema({
-    vol.Required(CONF_USERNAME): str,
-    vol.Required(CONF_PASSWORD): str,
-})
+DATA_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_USERNAME): str,
+        vol.Required(CONF_PASSWORD): str,
+    }
+)
 
 
 class AirBalticCardConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -53,9 +55,7 @@ class AirBalticCardConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors["base"] = "unknown"
 
         return self.async_show_form(
-            step_id="user",
-            data_schema=DATA_SCHEMA,
-            errors=errors
+            step_id="user", data_schema=DATA_SCHEMA, errors=errors
         )
 
     async def _async_validate_login(self, username, password):
@@ -68,6 +68,8 @@ class AirBalticCardConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             raise InvalidAuth
         except ConnectionError:
             raise CannotConnect
+        finally:
+            await api.close()
 
     @staticmethod
     @callback
@@ -96,22 +98,20 @@ class AirBalticCardOptionsFlow(config_entries.OptionsFlow):
                 return self.async_create_entry(title="", data=user_input)
 
         current = self.config_entry.options or {}
-        schema = vol.Schema({
-            vol.Required(
-                CONF_SCAN_INTERVAL,
-                default=current.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
-            ): vol.All(vol.Coerce(int), vol.Range(min=10, max=86400)),
-            vol.Required(
-                CONF_RETRY_INTERVAL,
-                default=current.get(CONF_RETRY_INTERVAL, DEFAULT_RETRY_INTERVAL)
-            ): vol.All(vol.Coerce(int), vol.Range(min=5, max=86400)),
-        })
-
-        return self.async_show_form(
-            step_id="init",
-            data_schema=schema,
-            errors=errors
+        schema = vol.Schema(
+            {
+                vol.Required(
+                    CONF_SCAN_INTERVAL,
+                    default=current.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
+                ): vol.All(vol.Coerce(int), vol.Range(min=10, max=86400)),
+                vol.Required(
+                    CONF_RETRY_INTERVAL,
+                    default=current.get(CONF_RETRY_INTERVAL, DEFAULT_RETRY_INTERVAL),
+                ): vol.All(vol.Coerce(int), vol.Range(min=5, max=86400)),
+            }
         )
+
+        return self.async_show_form(step_id="init", data_schema=schema, errors=errors)
 
 
 class CannotConnect(HomeAssistantError):
