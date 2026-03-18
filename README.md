@@ -7,7 +7,7 @@
 Monitor **AirBalticCard** account and SIM balances directly in Home Assistant.
 
 - **Integration domain:** `airbalticcard`
-- **Version:** 1.1.6
+- **Version:** 1.1.7
 - **HA Compatibility:** Home Assistant **2025.10** (and later)
 - **Python:** 3.13+
 - **IoT class:** `cloud_polling`
