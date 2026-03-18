@@ -32,8 +32,8 @@
       }
     },
     "error": {
-      "scan_too_short": "L’intervalle d’analyse doit être d’au moins 10 secondes.",
-      "retry_too_short": "L’intervalle de nouvelle tentative doit être d’au moins 5 secondes."
+      "scan_too_short": "L’intervalle d’analyse doit être entre 10 et 86400 secondes.",
+      "retry_too_short": "L’intervalle de nouvelle tentative doit être entre 5 et 86400 secondes."
     }
   },
   "entity": {

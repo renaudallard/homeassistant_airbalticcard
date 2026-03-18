@@ -90,9 +90,9 @@ class AirBalticCardOptionsFlow(config_entries.OptionsFlow):
             scan = user_input.get(CONF_SCAN_INTERVAL)
             retry = user_input.get(CONF_RETRY_INTERVAL)
 
-            if scan < 10:
+            if scan < 10 or scan > 86400:
                 errors["base"] = "scan_too_short"
-            elif retry < 5:
+            elif retry < 5 or retry > 86400:
                 errors["base"] = "retry_too_short"
             else:
                 return self.async_create_entry(title="", data=user_input)

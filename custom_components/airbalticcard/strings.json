@@ -32,8 +32,8 @@
       }
     },
     "error": {
-      "scan_too_short": "Scan interval must be at least 10 seconds.",
-      "retry_too_short": "Retry interval must be at least 5 seconds."
+      "scan_too_short": "Scan interval must be between 10 and 86400 seconds.",
+      "retry_too_short": "Retry interval must be between 5 and 86400 seconds."
     }
   },
   "entity": {
