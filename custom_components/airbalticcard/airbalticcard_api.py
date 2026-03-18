@@ -33,27 +33,41 @@ class AirBalticCardAPI:
         if self._own_session and self._session:
             await self._session.close()
 
-    async def _get_nonce(self) -> str:
-        session = await self._get_session()
-        async with session.get(LOGIN_URL, timeout=15) as resp:
-            if resp.status != 200:
-                raise ConnectionError(f"Login page unavailable (HTTP {resp.status})")
-            text = await resp.text()
-        soup = BeautifulSoup(text, "html.parser")
+    @staticmethod
+    def _extract_nonce(html: str) -> str | None:
+        """Extract the WooCommerce login nonce from HTML."""
+        soup = BeautifulSoup(html, "html.parser")
         nonce_input = soup.find("input", {"name": "woocommerce-login-nonce"})
         if not nonce_input:
-            raise ConnectionError("Could not retrieve login nonce from page")
+            return None
         nonce = nonce_input.get("value", "")
         if isinstance(nonce, list):
             nonce = nonce[0] if nonce else ""
-        if not nonce:
-            raise ConnectionError("Login nonce field is empty")
-        return str(nonce)
+        return str(nonce) if nonce else None
 
-    async def login(self):
-        """Perform login."""
+    async def login(self, html: str | None = None) -> str:
+        """Perform login and return the response HTML.
+
+        If *html* is provided, the nonce is extracted from it directly
+        instead of making an extra GET request.
+        """
         session = await self._get_session()
-        nonce = await self._get_nonce()
+
+        if html:
+            nonce = self._extract_nonce(html)
+        else:
+            nonce = None
+
+        if not nonce:
+            async with session.get(LOGIN_URL, timeout=15) as resp:
+                if resp.status != 200:
+                    raise ConnectionError(
+                        f"Login page unavailable (HTTP {resp.status})"
+                    )
+                text = await resp.text()
+            nonce = self._extract_nonce(text)
+            if not nonce:
+                raise ConnectionError("Could not retrieve login nonce from page")
 
         payload = {
             "username": self._username,
@@ -72,6 +86,7 @@ class AirBalticCardAPI:
 
         self._logged_in = True
         _LOGGER.info("Login successful for %s", self._username)
+        return text
 
     def _is_logged_in(self, html: str) -> bool:
         """Check if user is logged in based on page content.
@@ -117,11 +132,12 @@ class AirBalticCardAPI:
 
         if not self._is_logged_in(text):
             _LOGGER.info("Session expired — reauthenticating...")
-            await self.login()
-            async with session.get(DASHBOARD_URL, timeout=15) as resp:
-                text = await resp.text()
-                if not self._is_logged_in(text):
-                    raise ValueError("Could not reestablish session after re-login")
+            # Pass the page we already fetched so login() can extract
+            # the nonce without an extra GET request.  The login POST
+            # response (after redirect) is the dashboard page itself.
+            text = await self.login(html=text)
+            if not self._is_logged_in(text):
+                raise ValueError("Could not reestablish session after re-login")
 
         return BeautifulSoup(text, "html.parser")
 
