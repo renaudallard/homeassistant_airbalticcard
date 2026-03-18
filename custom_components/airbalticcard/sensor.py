@@ -213,8 +213,7 @@ class AirBalticCardSimBalanceSensor(
         except Exception:
             return None
 
-    @property
-    def _sim_data(self):
+    def _find_sim(self) -> dict[str, Any] | None:
         data = self.coordinator.data or {}
         for sim in data.get("sims", []):
             if sim.get("number") == self._sim_number:
@@ -222,28 +221,31 @@ class AirBalticCardSimBalanceSensor(
         return None
 
     @property
-    def native_value(self):
-        sim = self._sim_data
+    def native_value(self) -> float | None:
+        sim = self._find_sim()
         if not sim:
             return None
         return self._parse_credit(sim.get("credit", ""))
 
     @property
-    def icon(self):
+    def icon(self) -> str:
         val = self.native_value
         if val is None:
             return "mdi:sim"
         if val < 2:
             return "mdi:sim-alert"
-        elif val < 4:
+        if val < 4:
             return "mdi:sim-off"
         return "mdi:sim"
 
     @property
-    def extra_state_attributes(self):
-        sim = self._sim_data or {}
-        val = self.native_value or 0
-        severity = "critical" if val < 2 else "warning" if val < 4 else "normal"
+    def extra_state_attributes(self) -> dict[str, Any]:
+        sim = self._find_sim() or {}
+        val = self._parse_credit(sim.get("credit", "") or "") if sim else None
+        effective = val if val is not None else 0
+        severity = (
+            "critical" if effective < 2 else "warning" if effective < 4 else "normal"
+        )
         return {
             "sim_number": sim.get("number"),
             "sim_name": sim.get("name"),
@@ -289,8 +291,7 @@ class AirBalticCardSimDescriptionSensor(
         self._attr_unique_id = f"{DOMAIN}_{account_id}_{sim_number}_description"
         self._attr_name = "Description"
 
-    @property
-    def _sim_data(self):
+    def _find_sim(self) -> dict[str, Any] | None:
         data = self.coordinator.data or {}
         for sim in data.get("sims", []):
             if sim.get("number") == self._sim_number:
@@ -299,7 +300,7 @@ class AirBalticCardSimDescriptionSensor(
 
     @property
     def native_value(self):
-        sim = self._sim_data
+        sim = self._find_sim()
         if not sim:
             return None
         return sim.get("name")
