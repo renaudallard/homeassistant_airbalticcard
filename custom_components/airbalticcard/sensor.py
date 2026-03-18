@@ -11,7 +11,10 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CURRENCY_EURO
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import CoordinatorEntity, DataUpdateCoordinator
+from homeassistant.helpers.update_coordinator import (
+    CoordinatorEntity,
+    DataUpdateCoordinator,
+)
 
 from .const import DOMAIN
 from .models import AirBalticCardRuntimeData
@@ -35,13 +38,17 @@ async def async_setup_entry(
     # --- Account-level sensor ---
     if data.get("account_credit") is not None:
         sensors.append(
-            AirBalticCardAccountSensor(coordinator, runtime_data.account_id, runtime_data.username)
+            AirBalticCardAccountSensor(
+                coordinator, runtime_data.account_id, runtime_data.username
+            )
         )
 
     # --- Total SIM credit sensor ---
     if data.get("sims"):
         sensors.append(
-            AirBalticCardTotalSimCreditSensor(coordinator, runtime_data.account_id, runtime_data.username)
+            AirBalticCardTotalSimCreditSensor(
+                coordinator, runtime_data.account_id, runtime_data.username
+            )
         )
 
     # --- Individual SIM sensors (balance + description) ---
@@ -116,7 +123,9 @@ class AirBalticCardAccountSensor(CoordinatorEntity[Mapping[str, Any]], SensorEnt
 # ================================================================
 # Total SIM Credit sensor
 # ================================================================
-class AirBalticCardTotalSimCreditSensor(CoordinatorEntity[Mapping[str, Any]], SensorEntity):
+class AirBalticCardTotalSimCreditSensor(
+    CoordinatorEntity[Mapping[str, Any]], SensorEntity
+):
     """Sensor summing all SIM card balances."""
 
     _attr_device_class = SensorDeviceClass.MONETARY
@@ -144,7 +153,12 @@ class AirBalticCardTotalSimCreditSensor(CoordinatorEntity[Mapping[str, Any]], Se
         total = 0.0
         for sim in sims:
             try:
-                val = (sim.get("credit", "") or "").replace("€", "").replace(",", ".").strip()
+                val = (
+                    (sim.get("credit", "") or "")
+                    .replace("€", "")
+                    .replace(",", ".")
+                    .strip()
+                )
                 total += float(val)
             except Exception:
                 continue
@@ -224,11 +238,7 @@ class AirBalticCardSimBalanceSensor(CoordinatorEntity[Mapping[str, Any]], Sensor
     def extra_state_attributes(self):
         sim = self._sim_data or {}
         val = self.native_value or 0
-        severity = (
-            "critical" if val < 2 else
-            "warning" if val < 4 else
-            "normal"
-        )
+        severity = "critical" if val < 2 else "warning" if val < 4 else "normal"
         return {
             "sim_number": sim.get("number"),
             "sim_name": sim.get("name"),
@@ -253,7 +263,9 @@ class AirBalticCardSimBalanceSensor(CoordinatorEntity[Mapping[str, Any]], Sensor
 # ================================================================
 # Individual SIM DESCRIPTION sensors
 # ================================================================
-class AirBalticCardSimDescriptionSensor(CoordinatorEntity[Mapping[str, Any]], SensorEntity):
+class AirBalticCardSimDescriptionSensor(
+    CoordinatorEntity[Mapping[str, Any]], SensorEntity
+):
     """Sensor showing SIM card description/label."""
 
     _attr_icon = "mdi:label"
