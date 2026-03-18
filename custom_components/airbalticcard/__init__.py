@@ -43,38 +43,40 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     session = async_get_clientsession(hass)
     api = AirBalticCardAPI(username, password, session=session)
 
-    scan_interval: int = entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
-    retry_interval: int = entry.options.get(CONF_RETRY_INTERVAL, DEFAULT_RETRY_INTERVAL)
+    def _get_intervals(
+        cfg_entry: ConfigEntry,
+    ) -> tuple[timedelta, timedelta]:
+        scan = cfg_entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
+        retry = cfg_entry.options.get(CONF_RETRY_INTERVAL, DEFAULT_RETRY_INTERVAL)
+        return timedelta(seconds=scan), timedelta(seconds=retry)
+
+    success_interval, retry_interval_delta = _get_intervals(entry)
 
     coordinator_ref: dict[str, DataUpdateCoordinator[dict[str, Any]] | None] = {
         "coordinator": None
     }
-    success_interval = timedelta(seconds=scan_interval)
-    retry_interval_delta = timedelta(seconds=retry_interval)
 
     async def async_update_data() -> dict[str, Any]:
         """Fetch data periodically and handle errors."""
+        cur_success, cur_retry = _get_intervals(entry)
         try:
             data = await api.get_sim_cards()
         except Exception as err:
             _LOGGER.warning(
                 "Failed to fetch AirBalticCard data: %s (retry in %ss)",
                 err,
-                retry_interval,
+                cur_retry.total_seconds(),
             )
             coordinator_obj = coordinator_ref["coordinator"]
-            if (
-                coordinator_obj
-                and coordinator_obj.update_interval != retry_interval_delta
-            ):
-                coordinator_obj.update_interval = retry_interval_delta
+            if coordinator_obj and coordinator_obj.update_interval != cur_retry:
+                coordinator_obj.update_interval = cur_retry
             raise UpdateFailed(
                 f"Error communicating with AirBalticCard: {err}"
             ) from err
 
         coordinator_obj = coordinator_ref["coordinator"]
-        if coordinator_obj and coordinator_obj.update_interval != success_interval:
-            coordinator_obj.update_interval = success_interval
+        if coordinator_obj and coordinator_obj.update_interval != cur_success:
+            coordinator_obj.update_interval = cur_success
 
         return data
 
@@ -88,7 +90,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     coordinator_ref["coordinator"] = coordinator
 
-    # ⛔ Blocking: wait for the first refresh before entity setup
+    # Blocking: wait for the first refresh before entity setup
     await coordinator.async_config_entry_first_refresh()
 
     runtime_data = AirBalticCardRuntimeData(
@@ -105,13 +107,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await _async_migrate_device_entries(hass, entry, runtime_data)
     await _async_migrate_entity_unique_ids(hass, entry, runtime_data.account_id)
 
+    async def _async_options_updated(
+        hass: HomeAssistant, cfg_entry: ConfigEntry
+    ) -> None:
+        new_success, _ = _get_intervals(cfg_entry)
+        coordinator.update_interval = new_success
+        _LOGGER.info(
+            "AirBalticCard options updated (scan=%ss, retry=%ss)",
+            new_success.total_seconds(),
+            _.total_seconds(),
+        )
+
+    entry.async_on_unload(entry.add_update_listener(_async_options_updated))
+
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     _LOGGER.info(
         "AirBalticCard integration started for %s (scan=%ss, retry=%ss)",
         username,
-        scan_interval,
-        retry_interval,
+        success_interval.total_seconds(),
+        retry_interval_delta.total_seconds(),
     )
     return True
 
