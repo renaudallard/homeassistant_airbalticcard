@@ -1,7 +1,7 @@
 import aiohttp
 import logging
 from bs4 import BeautifulSoup
-from typing import List, Dict, Any
+from typing import Any, Dict
 
 _LOGGER = logging.getLogger(__name__)
 
