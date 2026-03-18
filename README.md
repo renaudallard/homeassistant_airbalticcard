@@ -7,7 +7,7 @@
 Monitor **AirBalticCard** account and SIM balances directly in Home Assistant.
 
 - **Integration domain:** `airbalticcard`
-- **Version:** 1.1.7
+- **Version:** 1.2.0
 - **HA Compatibility:** Home Assistant **2025.10** (and later)
 - **Python:** 3.13+
 - **IoT class:** `cloud_polling`
@@ -166,6 +166,20 @@ Logs appear in **Settings → System → Logs** (or in `home-assistant.log`).
 ---
 
 ## Changelog
+
+### 1.2.0
+- Fixed session leak in config flow login validation.
+- Eliminated redundant login on every poll cycle (3 HTTP requests per cycle reduced to 1).
+- Cut first-load HTTP requests from 4 to 2 by reusing fetched HTML for nonce extraction and login response.
+- Fixed false login failures caused by overly broad text matching in login detection.
+- Fixed account credit parsing to search all sidebar blocks instead of only the first.
+- Fixed options flow so interval changes take effect immediately without reload.
+- Fixed config flow to check for duplicate accounts before making network calls.
+- Fixed AbortFlow being swallowed by generic exception handler in config flow.
+- Added upper bound validation (86400s) for scan and retry intervals.
+- Removed unused `requests` dependency from manifest.
+- Full type correctness: fixed mypy errors (aiohttp timeout types, CoordinatorEntity generics, DeviceInfo return types, BeautifulSoup attribute types).
+- Applied ruff formatting to all files.
 
 ### 1.1.4
 - Refactored the integration to modern Home Assistant patterns (type hints, dataclasses, entity naming).
