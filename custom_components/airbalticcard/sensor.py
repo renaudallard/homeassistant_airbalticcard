@@ -77,7 +77,9 @@ async def async_setup_entry(
 # ================================================================
 # Account-level sensor
 # ================================================================
-class AirBalticCardAccountSensor(CoordinatorEntity[Mapping[str, Any]], SensorEntity):
+class AirBalticCardAccountSensor(
+    CoordinatorEntity[DataUpdateCoordinator[dict[str, Any]]], SensorEntity
+):
     """Sensor showing total account credit."""
 
     _attr_device_class = SensorDeviceClass.MONETARY
@@ -88,7 +90,7 @@ class AirBalticCardAccountSensor(CoordinatorEntity[Mapping[str, Any]], SensorEnt
 
     def __init__(
         self,
-        coordinator: DataUpdateCoordinator[Mapping[str, Any]],
+        coordinator: DataUpdateCoordinator[dict[str, Any]],
         account_id: str,
         username: str,
     ) -> None:
@@ -124,7 +126,7 @@ class AirBalticCardAccountSensor(CoordinatorEntity[Mapping[str, Any]], SensorEnt
 # Total SIM Credit sensor
 # ================================================================
 class AirBalticCardTotalSimCreditSensor(
-    CoordinatorEntity[Mapping[str, Any]], SensorEntity
+    CoordinatorEntity[DataUpdateCoordinator[dict[str, Any]]], SensorEntity
 ):
     """Sensor summing all SIM card balances."""
 
@@ -136,7 +138,7 @@ class AirBalticCardTotalSimCreditSensor(
 
     def __init__(
         self,
-        coordinator: DataUpdateCoordinator[Mapping[str, Any]],
+        coordinator: DataUpdateCoordinator[dict[str, Any]],
         account_id: str,
         username: str,
     ) -> None:
@@ -181,7 +183,9 @@ class AirBalticCardTotalSimCreditSensor(
 # ================================================================
 # Individual SIM BALANCE sensors (with dynamic icons + severity)
 # ================================================================
-class AirBalticCardSimBalanceSensor(CoordinatorEntity[Mapping[str, Any]], SensorEntity):
+class AirBalticCardSimBalanceSensor(
+    CoordinatorEntity[DataUpdateCoordinator[dict[str, Any]]], SensorEntity
+):
     """Sensor showing SIM card balance with dynamic icons."""
 
     _attr_device_class = SensorDeviceClass.MONETARY
@@ -191,7 +195,7 @@ class AirBalticCardSimBalanceSensor(CoordinatorEntity[Mapping[str, Any]], Sensor
 
     def __init__(
         self,
-        coordinator: DataUpdateCoordinator[Mapping[str, Any]],
+        coordinator: DataUpdateCoordinator[dict[str, Any]],
         account_id: str,
         sim_number: str,
     ) -> None:
@@ -264,7 +268,7 @@ class AirBalticCardSimBalanceSensor(CoordinatorEntity[Mapping[str, Any]], Sensor
 # Individual SIM DESCRIPTION sensors
 # ================================================================
 class AirBalticCardSimDescriptionSensor(
-    CoordinatorEntity[Mapping[str, Any]], SensorEntity
+    CoordinatorEntity[DataUpdateCoordinator[dict[str, Any]]], SensorEntity
 ):
     """Sensor showing SIM card description/label."""
 
@@ -274,7 +278,7 @@ class AirBalticCardSimDescriptionSensor(
 
     def __init__(
         self,
-        coordinator: DataUpdateCoordinator[Mapping[str, Any]],
+        coordinator: DataUpdateCoordinator[dict[str, Any]],
         account_id: str,
         sim_number: str,
     ) -> None:

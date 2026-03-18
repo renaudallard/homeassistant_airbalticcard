@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Mapping
 from typing import Any
 
 from homeassistant.components.button import ButtonEntity
@@ -42,7 +41,9 @@ async def async_setup_entry(
     _LOGGER.debug("AirBalticCard Refresh button registered.")
 
 
-class AirBalticCardRefreshButton(CoordinatorEntity[Mapping[str, Any]], ButtonEntity):
+class AirBalticCardRefreshButton(
+    CoordinatorEntity[DataUpdateCoordinator[dict[str, Any]]], ButtonEntity
+):
     """Button entity to manually refresh AirBalticCard data."""
 
     _attr_has_entity_name = True
@@ -53,7 +54,7 @@ class AirBalticCardRefreshButton(CoordinatorEntity[Mapping[str, Any]], ButtonEnt
 
     def __init__(
         self,
-        coordinator: DataUpdateCoordinator[Mapping[str, Any]],
+        coordinator: DataUpdateCoordinator[dict[str, Any]],
         account_id: str,
         username: str,
     ) -> None:
