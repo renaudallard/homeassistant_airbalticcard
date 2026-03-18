@@ -5,8 +5,7 @@ from typing import Any, Dict
 
 _LOGGER = logging.getLogger(__name__)
 
-LOGIN_URL = "https://airbalticcard.com/my-account/"
-DASHBOARD_URL = "https://airbalticcard.com/my-account/"
+ACCOUNT_URL = "https://airbalticcard.com/my-account/"
 
 
 class AirBalticCardAPI:
@@ -59,7 +58,7 @@ class AirBalticCardAPI:
             nonce = None
 
         if not nonce:
-            async with session.get(LOGIN_URL, timeout=15) as resp:
+            async with session.get(ACCOUNT_URL, timeout=15) as resp:
                 if resp.status != 200:
                     raise ConnectionError(
                         f"Login page unavailable (HTTP {resp.status})"
@@ -77,7 +76,7 @@ class AirBalticCardAPI:
         }
 
         async with session.post(
-            LOGIN_URL, data=payload, allow_redirects=True, timeout=15
+            ACCOUNT_URL, data=payload, allow_redirects=True, timeout=15
         ) as resp:
             text = await resp.text()
 
@@ -127,7 +126,7 @@ class AirBalticCardAPI:
 
     async def _fetch_dashboard(self) -> BeautifulSoup:
         session = await self._get_session()
-        async with session.get(DASHBOARD_URL, timeout=15) as resp:
+        async with session.get(ACCOUNT_URL, timeout=15) as resp:
             text = await resp.text()
 
         if not self._is_logged_in(text):
