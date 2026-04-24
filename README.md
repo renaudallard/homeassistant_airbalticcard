@@ -45,7 +45,9 @@
 
 ### HACS (preferred)
 
-1. In **HACS > Integrations**, search for **AirBalticCard SIM Balance**.
+[![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=renaudallard&repository=homeassistant_airbalticcard&category=integration)
+
+1. Click the button above, or in **HACS > Integrations**, search for **AirBalticCard SIM Balance**.
    If it doesn't appear, add the repo as a **Custom repository**:
    `https://github.com/renaudallard/homeassistant_airbalticcard` (Integration)
 2. Install, then **restart Home Assistant**.
