@@ -7,10 +7,11 @@ import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 
 from .airbalticcard_api import AirBalticCardAPI
-from .const import PLATFORMS
+from .const import DOMAIN, PLATFORMS
 from .coordinator import AirBalticCardCoordinator
 from .migration import async_migrate_registries
 from .models import AirBalticCardRuntimeData
@@ -58,13 +59,22 @@ async def async_migrate_entry(
     hass: HomeAssistant, entry: AirBalticCardConfigEntry
 ) -> bool:
     """Migrate an entry created by an older release."""
-    if entry.version > 2:
-        # Downgraded from a newer release; nothing sensible to do.
-        return False
-
     if entry.version == 1:
         async_migrate_registries(hass, entry, entry.data[CONF_USERNAME])
         hass.config_entries.async_update_entry(entry, version=2)
         _LOGGER.debug("Migrated AirBalticCard entry %s to version 2", entry.entry_id)
 
     return True
+
+
+async def async_remove_config_entry_device(
+    hass: HomeAssistant, entry: AirBalticCardConfigEntry, device: dr.DeviceEntry
+) -> bool:
+    """Allow deleting a SIM device that is no longer on the account."""
+    account_id = entry.entry_id
+    live = {(DOMAIN, f"{account_id}_account")} | {
+        (DOMAIN, f"{account_id}_{sim['number']}")
+        for sim in entry.runtime_data.coordinator.data.get("sims", [])
+        if sim.get("number")
+    }
+    return not device.identifiers & live
