@@ -35,7 +35,7 @@ REAUTH_SCHEMA = vol.Schema({vol.Required(CONF_PASSWORD): str})
 class AirBalticCardConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle the configuration flow for AirBalticCard."""
 
-    VERSION = 1
+    VERSION = 2
 
     async def async_step_user(self, user_input=None):
         errors = {}

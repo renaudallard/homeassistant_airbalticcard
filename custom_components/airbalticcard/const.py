@@ -19,4 +19,9 @@ CONF_RETRY_INTERVAL: Final = "retry_interval"
 DEFAULT_SCAN_INTERVAL: Final = 3600
 DEFAULT_RETRY_INTERVAL: Final = 3600
 
+# Device registry labels
+MANUFACTURER: Final = "AirBaltic"
+ACCOUNT_MODEL: Final = "Prepaid SIM Platform"
+SIM_MODEL: Final = "Prepaid SIM"
+
 PLATFORMS: Final = (Platform.SENSOR, Platform.BUTTON)
