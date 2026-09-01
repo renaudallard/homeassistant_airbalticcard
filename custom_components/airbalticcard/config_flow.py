@@ -1,5 +1,6 @@
 import voluptuous as vol
 from homeassistant import config_entries
+from homeassistant.config_entries import OptionsFlowWithReload
 from homeassistant.core import callback
 from homeassistant.exceptions import HomeAssistantError
 
@@ -78,8 +79,12 @@ class AirBalticCardConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         return AirBalticCardOptionsFlow()
 
 
-class AirBalticCardOptionsFlow(config_entries.OptionsFlow):
-    """Handle AirBalticCard integration options."""
+class AirBalticCardOptionsFlow(OptionsFlowWithReload):
+    """Handle AirBalticCard integration options.
+
+    The entry is reloaded when the options change, so a new interval is picked
+    up straight away instead of at the end of the pending poll.
+    """
 
     async def async_step_init(self, user_input=None):
         errors = {}
@@ -93,7 +98,7 @@ class AirBalticCardOptionsFlow(config_entries.OptionsFlow):
             elif retry < 5 or retry > 86400:
                 errors["base"] = "retry_too_short"
             else:
-                return self.async_create_entry(title="", data=user_input)
+                return self.async_create_entry(data=user_input)
 
         current = self.config_entry.options or {}
         schema = vol.Schema(

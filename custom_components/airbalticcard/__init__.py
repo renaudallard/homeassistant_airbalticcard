@@ -107,19 +107,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     await _async_migrate_device_entries(hass, entry, runtime_data)
     await _async_migrate_entity_unique_ids(hass, entry, runtime_data.account_id)
 
-    async def _async_options_updated(
-        hass: HomeAssistant, cfg_entry: ConfigEntry
-    ) -> None:
-        new_success, new_retry = _get_intervals(cfg_entry)
-        coordinator.update_interval = new_success
-        _LOGGER.info(
-            "AirBalticCard options updated (scan=%ss, retry=%ss)",
-            new_success.total_seconds(),
-            new_retry.total_seconds(),
-        )
-
-    entry.async_on_unload(entry.add_update_listener(_async_options_updated))
-
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     _LOGGER.info(
