@@ -55,11 +55,11 @@ class AirBalticCardRefreshButton(AirBalticCardAccountEntity, ButtonEntity):
         super().__init__(coordinator, account_id, username)
         self._attr_unique_id = f"{DOMAIN}_{account_id}_refresh"
 
+    @property
+    def available(self) -> bool:
+        """Stay available: a failed update is exactly when this is needed."""
+        return True
+
     async def async_press(self) -> None:
-        """Handle the button press."""
-        _LOGGER.info("Manual refresh triggered for AirBalticCard data.")
-        try:
-            await self.coordinator.async_request_refresh()
-            _LOGGER.debug("Manual AirBalticCard refresh completed successfully.")
-        except Exception as err:
-            _LOGGER.warning("Manual refresh failed: %s", err)
+        """Refresh the account data."""
+        await self.coordinator.async_request_refresh()
