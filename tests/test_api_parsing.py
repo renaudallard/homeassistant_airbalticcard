@@ -130,3 +130,32 @@ def test_account_credit_is_none_when_absent():
     """No matching block means no account credit."""
     page = soup('<div class="sideTable_side"></div>')
     assert AirBalticCardAPI._parse_account_credit(page) is None
+
+
+@pytest.mark.parametrize(
+    "cell",
+    [
+        "Europe 5 countries",
+        "€0.09/min",
+        "0.09 EUR per minute",
+        "Travel",
+        "37120000000",
+        "",
+    ],
+)
+def test_cells_that_are_not_a_balance_are_skipped(cell):
+    """Only a cell holding nothing but an amount counts as the balance."""
+    sims = AirBalticCardAPI._parse_sims(soup(SIM_ROW.format(credit=cell)))
+    assert sims[0]["credit"] is None
+
+
+def test_the_balance_wins_over_an_earlier_tariff_cell():
+    """A tariff column ahead of the balance is not picked up."""
+    page = soup(
+        "<table><tr>"
+        '<td><div class="js-label-container" data-number="37120000000">'
+        '<span class="js-sim-label-value">Travel</span></div></td>'
+        "<td>Europe 5 countries</td><td>€0.09/min</td><td>12,34 €</td>"
+        "</tr></table>"
+    )
+    assert AirBalticCardAPI._parse_sims(page)[0]["credit"] == 12.34

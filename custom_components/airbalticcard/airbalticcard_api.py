@@ -19,6 +19,14 @@ _NONCE_FIELD = "woocommerce-login-nonce"
 # A leading digit followed by digits, group separators and a decimal separator.
 _AMOUNT_RE = re.compile(r"-?\d[\d\s\u00a0\u202f.,]*")
 _SPACE_RE = re.compile(r"[\s\u00a0\u202f]")
+# A balance cell is an amount and a currency marker and nothing else, so a
+# tariff such as "€0.09/min" or a label such as "Europe 5 countries" is
+# not mistaken for one.
+_CREDIT_RE = re.compile(
+    r"^(?:€|EUR)\s*-?[\d\s\u00a0\u202f.,]+$"
+    r"|^-?[\d\s\u00a0\u202f.,]+\s*(?:€|EUR)$",
+    re.IGNORECASE,
+)
 
 
 class AirBalticCardError(Exception):
@@ -223,7 +231,7 @@ class AirBalticCardAPI:
             credit = None
             for cell in row.find_all("td"):
                 text = cell.get_text(strip=True)
-                if "€" not in text and "eur" not in text.lower():
+                if not _CREDIT_RE.match(text):
                     continue
                 credit = parse_amount(text)
                 if credit is not None:
