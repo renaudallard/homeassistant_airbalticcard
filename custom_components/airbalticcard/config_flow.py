@@ -1,8 +1,18 @@
+"""Config and options flows for the AirBalticCard integration."""
+
+from __future__ import annotations
+
 import logging
+from collections.abc import Mapping
+from typing import Any
 
 import voluptuous as vol
-from homeassistant import config_entries
-from homeassistant.config_entries import OptionsFlowWithReload
+from homeassistant.config_entries import (
+    ConfigFlow,
+    ConfigFlowResult,
+    OptionsFlowWithReload,
+)
+from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import callback
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 
@@ -12,35 +22,38 @@ from .airbalticcard_api import (
     AirBalticCardConnectionError,
 )
 from .const import (
-    CONF_PASSWORD,
     CONF_RETRY_INTERVAL,
     CONF_SCAN_INTERVAL,
-    CONF_USERNAME,
     DEFAULT_RETRY_INTERVAL,
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
+    MAX_INTERVAL,
+    MIN_RETRY_INTERVAL,
+    MIN_SCAN_INTERVAL,
 )
 
 _LOGGER = logging.getLogger(__name__)
 
-DATA_SCHEMA = vol.Schema(
+STEP_USER_SCHEMA = vol.Schema(
     {
         vol.Required(CONF_USERNAME): str,
         vol.Required(CONF_PASSWORD): str,
     }
 )
 
+STEP_REAUTH_SCHEMA = vol.Schema({vol.Required(CONF_PASSWORD): str})
 
-REAUTH_SCHEMA = vol.Schema({vol.Required(CONF_PASSWORD): str})
 
-
-class AirBalticCardConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
+class AirBalticCardConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle the configuration flow for AirBalticCard."""
 
     VERSION = 2
 
-    async def async_step_user(self, user_input=None):
-        errors = {}
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Ask for the account credentials and check them."""
+        errors: dict[str, str] = {}
 
         if user_input is not None:
             username = user_input[CONF_USERNAME].strip()
@@ -59,17 +72,21 @@ class AirBalticCardConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 )
 
         return self.async_show_form(
-            step_id="user", data_schema=DATA_SCHEMA, errors=errors
+            step_id="user", data_schema=STEP_USER_SCHEMA, errors=errors
         )
 
-    async def async_step_reauth(self, entry_data):
+    async def async_step_reauth(
+        self, entry_data: Mapping[str, Any]
+    ) -> ConfigFlowResult:
         """Start the flow that asks for a new password."""
         return await self.async_step_reauth_confirm()
 
-    async def async_step_reauth_confirm(self, user_input=None):
+    async def async_step_reauth_confirm(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         """Check the new password and reload the entry."""
         entry = self._get_reauth_entry()
-        errors = {}
+        errors: dict[str, str] = {}
 
         if user_input is not None:
             password = user_input[CONF_PASSWORD]
@@ -81,12 +98,12 @@ class AirBalticCardConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         return self.async_show_form(
             step_id="reauth_confirm",
-            data_schema=REAUTH_SCHEMA,
+            data_schema=STEP_REAUTH_SCHEMA,
             errors=errors,
             description_placeholders={CONF_USERNAME: entry.data[CONF_USERNAME]},
         )
 
-    async def _async_validate(self, username, password):
+    async def _async_validate(self, username: str, password: str) -> dict[str, str]:
         """Try to log in and return the form errors, empty when it worked."""
         session = async_create_clientsession(self.hass, auto_cleanup=False)
         try:
@@ -106,41 +123,45 @@ class AirBalticCardConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     @staticmethod
     @callback
-    def async_get_options_flow(config_entry):
+    def async_get_options_flow(config_entry: Any) -> AirBalticCardOptionsFlow:
+        """Return the options flow handler."""
         return AirBalticCardOptionsFlow()
 
 
 class AirBalticCardOptionsFlow(OptionsFlowWithReload):
-    """Handle AirBalticCard integration options.
+    """Handle the AirBalticCard options.
 
     The entry is reloaded when the options change, so a new interval is picked
     up straight away instead of at the end of the pending poll.
     """
 
-    async def async_step_init(self, user_input=None):
-        errors = {}
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Ask for the polling intervals."""
+        errors: dict[str, str] = {}
 
         if user_input is not None:
-            scan = user_input.get(CONF_SCAN_INTERVAL)
-            retry = user_input.get(CONF_RETRY_INTERVAL)
+            scan = user_input[CONF_SCAN_INTERVAL]
+            retry = user_input[CONF_RETRY_INTERVAL]
 
-            if scan < 10 or scan > 86400:
-                errors["base"] = "scan_too_short"
-            elif retry < 5 or retry > 86400:
-                errors["base"] = "retry_too_short"
+            if not MIN_SCAN_INTERVAL <= scan <= MAX_INTERVAL:
+                errors["base"] = "scan_out_of_range"
+            elif not MIN_RETRY_INTERVAL <= retry <= MAX_INTERVAL:
+                errors["base"] = "retry_out_of_range"
             else:
                 return self.async_create_entry(data=user_input)
 
-        current = self.config_entry.options or {}
+        options = self.config_entry.options
         schema = vol.Schema(
             {
                 vol.Required(
                     CONF_SCAN_INTERVAL,
-                    default=current.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
+                    default=options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
                 ): vol.Coerce(int),
                 vol.Required(
                     CONF_RETRY_INTERVAL,
-                    default=current.get(CONF_RETRY_INTERVAL, DEFAULT_RETRY_INTERVAL),
+                    default=options.get(CONF_RETRY_INTERVAL, DEFAULT_RETRY_INTERVAL),
                 ): vol.Coerce(int),
             }
         )
