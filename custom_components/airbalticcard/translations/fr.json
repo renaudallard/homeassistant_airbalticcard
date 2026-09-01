@@ -53,10 +53,10 @@
         "name": "Crédit total des SIM"
       },
       "sim_balance": {
-        "name": "Solde de la carte SIM"
+        "name": "Solde"
       },
       "sim_description": {
-        "name": "Description de la carte SIM"
+        "name": "Description"
       }
     },
     "button": {

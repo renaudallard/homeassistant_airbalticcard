@@ -43,7 +43,6 @@ async def async_setup_entry(
 class AirBalticCardRefreshButton(AirBalticCardAccountEntity, ButtonEntity):
     """Button entity to manually refresh AirBalticCard data."""
 
-    _attr_name = "Manual Refresh"
     _attr_icon = "mdi:refresh"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
     _attr_translation_key = "refresh"

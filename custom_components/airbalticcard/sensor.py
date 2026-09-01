@@ -80,7 +80,6 @@ class AirBalticCardAccountSensor(AirBalticCardAccountEntity, SensorEntity):
     ) -> None:
         super().__init__(coordinator, account_id, username)
         self._attr_unique_id = f"{DOMAIN}_{account_id}_account_credit"
-        self._attr_name = "Account Credit"
 
     @property
     def native_value(self) -> float | None:
@@ -106,7 +105,6 @@ class AirBalticCardTotalSimCreditSensor(AirBalticCardAccountEntity, SensorEntity
     ) -> None:
         super().__init__(coordinator, account_id, username)
         self._attr_unique_id = f"{DOMAIN}_{account_id}_total_sim_credit"
-        self._attr_name = "Total SIM Credit"
 
     @property
     def native_value(self) -> float | None:
@@ -138,7 +136,6 @@ class AirBalticCardSimBalanceSensor(AirBalticCardSimEntity, SensorEntity):
     ) -> None:
         super().__init__(coordinator, account_id, sim_number)
         self._attr_unique_id = f"{DOMAIN}_{account_id}_{sim_number}_balance"
-        self._attr_name = "Balance"
 
     @property
     def native_value(self) -> float | None:
@@ -194,7 +191,6 @@ class AirBalticCardSimDescriptionSensor(AirBalticCardSimEntity, SensorEntity):
     ) -> None:
         super().__init__(coordinator, account_id, sim_number)
         self._attr_unique_id = f"{DOMAIN}_{account_id}_{sim_number}_description"
-        self._attr_name = "Description"
 
     @property
     def native_value(self):

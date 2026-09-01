@@ -53,10 +53,10 @@
         "name": "Total SIM Credit"
       },
       "sim_balance": {
-        "name": "SIM Balance"
+        "name": "Balance"
       },
       "sim_description": {
-        "name": "SIM Description"
+        "name": "Description"
       }
     },
     "button": {
