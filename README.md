@@ -166,7 +166,20 @@ Logs appear in **Settings > System > Logs** or in `home-assistant.log`.
 - Entity names come from the translation files again, so the French names show.
 - Registry migration runs once through `async_migrate_entry` instead of on
   every startup.
+- A request timeout is handled as a connection failure, so the retry interval
+  applies to it and the config flow says so rather than reporting an
+  unexpected error.
+- Only a cell holding nothing but an amount counts as a balance, so a tariff
+  or a plan name on the same row is not read as one.
+- A reauthentication prompt appears only when the portal actually refused the
+  password, not for a maintenance page.
+- The SIM total stays unknown while any balance on the account is unreadable,
+  instead of quietly leaving a SIM out.
+- A SIM that has left the account can be deleted from the device page.
+- The options form keeps what was typed when a value is out of range.
 - `hacs.json` no longer hides the repository from HACS country filters.
+- Adds the MIT license file, sorts the manifest keys, and runs hassfest, the
+  HACS check, ruff and the tests in CI.
 
 ### 1.2.1
 - Reduced redundant BeautifulSoup parsing (normal path from 2 parses to 1, re-auth from 5 to 3).
