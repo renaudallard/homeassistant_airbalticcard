@@ -5,7 +5,11 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
-from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntity,
+    SensorStateClass,
+)
 from homeassistant.const import CURRENCY_EURO
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -68,7 +72,9 @@ class AirBalticCardAccountSensor(AirBalticCardAccountEntity, SensorEntity):
     """Sensor showing total account credit."""
 
     _attr_device_class = SensorDeviceClass.MONETARY
+    _attr_state_class = SensorStateClass.TOTAL
     _attr_native_unit_of_measurement = CURRENCY_EURO
+    _attr_suggested_display_precision = 2
     _attr_icon = "mdi:wallet"
     _attr_translation_key = "account_credit"
 
@@ -93,7 +99,9 @@ class AirBalticCardTotalSimCreditSensor(AirBalticCardAccountEntity, SensorEntity
     """Sensor summing all SIM card balances."""
 
     _attr_device_class = SensorDeviceClass.MONETARY
+    _attr_state_class = SensorStateClass.TOTAL
     _attr_native_unit_of_measurement = CURRENCY_EURO
+    _attr_suggested_display_precision = 2
     _attr_icon = "mdi:cash-multiple"
     _attr_translation_key = "total_sim_credit"
 
@@ -125,7 +133,9 @@ class AirBalticCardSimBalanceSensor(AirBalticCardSimEntity, SensorEntity):
     """Sensor showing SIM card balance with dynamic icons."""
 
     _attr_device_class = SensorDeviceClass.MONETARY
+    _attr_state_class = SensorStateClass.TOTAL
     _attr_native_unit_of_measurement = CURRENCY_EURO
+    _attr_suggested_display_precision = 2
     _attr_translation_key = "sim_balance"
 
     def __init__(
