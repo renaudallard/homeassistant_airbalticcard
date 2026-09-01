@@ -12,7 +12,7 @@ from homeassistant.const import CURRENCY_EURO
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
-from .const import DOMAIN
+from .const import BALANCE_CRITICAL, BALANCE_WARNING, DOMAIN
 from .coordinator import AirBalticCardCoordinator
 from .entity import AirBalticCardAccountEntity, AirBalticCardSimEntity
 from .models import AirBalticCardRuntimeData
@@ -158,25 +158,31 @@ class AirBalticCardSimBalanceSensor(AirBalticCardSimEntity, SensorEntity):
 
     @property
     def icon(self) -> str:
-        val = self.native_value
-        if val is None:
+        value = self.native_value
+        if value is None:
             return "mdi:sim"
-        if val < 2:
+        if value < BALANCE_CRITICAL:
             return "mdi:sim-alert"
-        if val < 4:
+        if value < BALANCE_WARNING:
             return "mdi:sim-off"
         return "mdi:sim"
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         sim = self.sim or {}
-        val = sim.get("credit")
-        effective = val if val is not None else 0
-        severity = (
-            "critical" if effective < 2 else "warning" if effective < 4 else "normal"
-        )
+        value = sim.get("credit")
+
+        if value is None:
+            severity = None
+        elif value < BALANCE_CRITICAL:
+            severity = "critical"
+        elif value < BALANCE_WARNING:
+            severity = "warning"
+        else:
+            severity = "normal"
+
         return {
-            "sim_number": sim.get("number"),
+            "sim_number": self._sim_number,
             "sim_name": sim.get("name"),
             "balance_state": severity,
         }
