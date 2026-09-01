@@ -8,6 +8,7 @@ from typing import Any
 
 import voluptuous as vol
 from homeassistant.config_entries import (
+    ConfigEntry,
     ConfigFlow,
     ConfigFlowResult,
     OptionsFlowWithReload,
@@ -123,7 +124,7 @@ class AirBalticCardConfigFlow(ConfigFlow, domain=DOMAIN):
 
     @staticmethod
     @callback
-    def async_get_options_flow(config_entry: Any) -> AirBalticCardOptionsFlow:
+    def async_get_options_flow(config_entry: ConfigEntry) -> AirBalticCardOptionsFlow:
         """Return the options flow handler."""
         return AirBalticCardOptionsFlow()
 
@@ -152,18 +153,27 @@ class AirBalticCardOptionsFlow(OptionsFlowWithReload):
             else:
                 return self.async_create_entry(data=user_input)
 
-        options = self.config_entry.options
         schema = vol.Schema(
             {
-                vol.Required(
-                    CONF_SCAN_INTERVAL,
-                    default=options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL),
-                ): vol.Coerce(int),
-                vol.Required(
-                    CONF_RETRY_INTERVAL,
-                    default=options.get(CONF_RETRY_INTERVAL, DEFAULT_RETRY_INTERVAL),
-                ): vol.Coerce(int),
+                vol.Required(CONF_SCAN_INTERVAL): vol.Coerce(int),
+                vol.Required(CONF_RETRY_INTERVAL): vol.Coerce(int),
             }
         )
+        # Show back what was just typed on a rejected value, the stored values
+        # otherwise.
+        current = {
+            CONF_SCAN_INTERVAL: self.config_entry.options.get(
+                CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL
+            ),
+            CONF_RETRY_INTERVAL: self.config_entry.options.get(
+                CONF_RETRY_INTERVAL, DEFAULT_RETRY_INTERVAL
+            ),
+        }
 
-        return self.async_show_form(step_id="init", data_schema=schema, errors=errors)
+        return self.async_show_form(
+            step_id="init",
+            data_schema=self.add_suggested_values_to_schema(
+                schema, user_input or current
+            ),
+            errors=errors,
+        )
