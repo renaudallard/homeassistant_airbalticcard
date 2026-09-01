@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.2.1-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-1.3.0-blue" alt="Version">
   <img src="https://img.shields.io/badge/HA-2025.10%2B-41BDF5" alt="Home Assistant">
   <img src="https://img.shields.io/badge/Python-3.13%2B-3776AB" alt="Python">
   <img src="https://img.shields.io/badge/IoT%20class-cloud__polling-yellow" alt="IoT class">
@@ -150,7 +150,7 @@ Logs appear in **Settings > System > Logs** or in `home-assistant.log`.
 
 ## Changelog
 
-### Unreleased
+### 1.3.0
 - Fixed the options dialog crashing on Home Assistant 2025.12 and later.
 - Each account now polls with its own HTTP session; two accounts no longer
   overwrote each other's login and reported the wrong balances.
