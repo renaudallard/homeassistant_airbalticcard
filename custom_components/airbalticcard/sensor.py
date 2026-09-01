@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import logging
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.sensor import (
@@ -20,8 +19,6 @@ from .entity import AirBalticCardAccountEntity, AirBalticCardSimEntity
 
 if TYPE_CHECKING:
     from . import AirBalticCardConfigEntry
-
-_LOGGER = logging.getLogger(__name__)
 
 
 async def async_setup_entry(
@@ -69,7 +66,7 @@ async def async_setup_entry(
 
 
 class AirBalticCardAccountSensor(AirBalticCardAccountEntity, SensorEntity):
-    """Sensor showing total account credit."""
+    """Credit available on the account itself."""
 
     _attr_device_class = SensorDeviceClass.MONETARY
     _attr_state_class = SensorStateClass.TOTAL
@@ -79,24 +76,20 @@ class AirBalticCardAccountSensor(AirBalticCardAccountEntity, SensorEntity):
     _attr_translation_key = "account_credit"
 
     def __init__(
-        self,
-        coordinator: AirBalticCardCoordinator,
-        account_id: str,
-        username: str,
+        self, coordinator: AirBalticCardCoordinator, account_id: str, username: str
     ) -> None:
+        """Set the account-scoped unique ID."""
         super().__init__(coordinator, account_id, username)
         self._attr_unique_id = f"{DOMAIN}_{account_id}_account_credit"
 
     @property
     def native_value(self) -> float | None:
-        return (self.coordinator.data or {}).get("account_credit")
+        """Return the account credit."""
+        return self.coordinator.data.get("account_credit")
 
 
-# ================================================================
-# Total SIM Credit sensor
-# ================================================================
 class AirBalticCardTotalSimCreditSensor(AirBalticCardAccountEntity, SensorEntity):
-    """Sensor summing all SIM card balances."""
+    """Sum of the balances of every SIM on the account."""
 
     _attr_device_class = SensorDeviceClass.MONETARY
     _attr_state_class = SensorStateClass.TOTAL
@@ -106,19 +99,18 @@ class AirBalticCardTotalSimCreditSensor(AirBalticCardAccountEntity, SensorEntity
     _attr_translation_key = "total_sim_credit"
 
     def __init__(
-        self,
-        coordinator: AirBalticCardCoordinator,
-        account_id: str,
-        username: str,
+        self, coordinator: AirBalticCardCoordinator, account_id: str, username: str
     ) -> None:
+        """Set the account-scoped unique ID."""
         super().__init__(coordinator, account_id, username)
         self._attr_unique_id = f"{DOMAIN}_{account_id}_total_sim_credit"
 
     @property
     def native_value(self) -> float | None:
+        """Return the sum of every SIM balance that could be read."""
         balances = [
             sim["credit"]
-            for sim in (self.coordinator.data or {}).get("sims", [])
+            for sim in self.coordinator.data.get("sims", [])
             if sim.get("credit") is not None
         ]
         if not balances:
@@ -126,11 +118,8 @@ class AirBalticCardTotalSimCreditSensor(AirBalticCardAccountEntity, SensorEntity
         return round(sum(balances), 2)
 
 
-# ================================================================
-# Individual SIM BALANCE sensors (with dynamic icons + severity)
-# ================================================================
 class AirBalticCardSimBalanceSensor(AirBalticCardSimEntity, SensorEntity):
-    """Sensor showing SIM card balance with dynamic icons."""
+    """Balance of a single SIM card."""
 
     _attr_device_class = SensorDeviceClass.MONETARY
     _attr_state_class = SensorStateClass.TOTAL
@@ -139,21 +128,21 @@ class AirBalticCardSimBalanceSensor(AirBalticCardSimEntity, SensorEntity):
     _attr_translation_key = "sim_balance"
 
     def __init__(
-        self,
-        coordinator: AirBalticCardCoordinator,
-        account_id: str,
-        sim_number: str,
+        self, coordinator: AirBalticCardCoordinator, account_id: str, sim_number: str
     ) -> None:
+        """Set the account-scoped unique ID."""
         super().__init__(coordinator, account_id, sim_number)
         self._attr_unique_id = f"{DOMAIN}_{account_id}_{sim_number}_balance"
 
     @property
     def native_value(self) -> float | None:
+        """Return the SIM balance."""
         sim = self.sim
         return sim.get("credit") if sim else None
 
     @property
     def icon(self) -> str:
+        """Return an icon reflecting how low the balance is."""
         value = self.native_value
         if value is None:
             return "mdi:sim"
@@ -165,6 +154,7 @@ class AirBalticCardSimBalanceSensor(AirBalticCardSimEntity, SensorEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the SIM identity and how urgent its balance is."""
         sim = self.sim or {}
         value = sim.get("credit")
 
@@ -184,27 +174,21 @@ class AirBalticCardSimBalanceSensor(AirBalticCardSimEntity, SensorEntity):
         }
 
 
-# ================================================================
-# Individual SIM DESCRIPTION sensors
-# ================================================================
 class AirBalticCardSimDescriptionSensor(AirBalticCardSimEntity, SensorEntity):
-    """Sensor showing SIM card description/label."""
+    """Label given to a SIM card on the portal."""
 
     _attr_icon = "mdi:label"
     _attr_translation_key = "sim_description"
 
     def __init__(
-        self,
-        coordinator: AirBalticCardCoordinator,
-        account_id: str,
-        sim_number: str,
+        self, coordinator: AirBalticCardCoordinator, account_id: str, sim_number: str
     ) -> None:
+        """Set the account-scoped unique ID."""
         super().__init__(coordinator, account_id, sim_number)
         self._attr_unique_id = f"{DOMAIN}_{account_id}_{sim_number}_description"
 
     @property
-    def native_value(self):
+    def native_value(self) -> str | None:
+        """Return the SIM label."""
         sim = self.sim
-        if not sim:
-            return None
-        return sim.get("name")
+        return sim.get("name") if sim else None

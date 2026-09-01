@@ -65,7 +65,7 @@ def _attr(tag: Any, name: str) -> str:
 
 
 class AirBalticCardAPI:
-    """Async API client for AirBalticCard.
+    """Async client for the AirBalticCard customer portal.
 
     The caller owns *session*: its cookie jar holds the portal login, so each
     account needs a session of its own.
@@ -74,25 +74,18 @@ class AirBalticCardAPI:
     def __init__(
         self, username: str, password: str, session: aiohttp.ClientSession
     ) -> None:
+        """Store the credentials and the session used for every request."""
         self._username = username
         self._password = password
         self._session = session
 
-    @staticmethod
-    def _extract_nonce(soup: BeautifulSoup) -> str | None:
-        """Return the WooCommerce login nonce carried by a parsed page."""
-        field = soup.find("input", {"name": _NONCE_FIELD})
-        if not field:
-            return None
-        return _attr(field, "value") or None
-
     async def login(self, soup: BeautifulSoup | None = None) -> BeautifulSoup:
-        """Perform login and return the parsed response page.
+        """Log in and return the parsed response page.
 
-        If *soup* is provided, the nonce is extracted from it directly
-        instead of making an extra GET request.
+        When *soup* already carries a login form its nonce is reused, which
+        saves a round trip on re-authentication.
         """
-        nonce = self._extract_nonce(soup) if soup else None
+        nonce = self._extract_nonce(soup) if soup is not None else None
 
         if not nonce:
             nonce = self._extract_nonce(await self._fetch_account_page())
@@ -123,6 +116,46 @@ class AirBalticCardAPI:
         _LOGGER.debug("Logged in to AirBalticCard")
         return page
 
+    async def get_sim_cards(self) -> dict[str, Any]:
+        """Return the account credit and every SIM card on the account."""
+        page = await self._fetch_dashboard()
+        sims = self._parse_sims(page)
+        credit = self._parse_account_credit(page)
+
+        _LOGGER.debug("Parsed account credit %s and %d SIM card(s)", credit, len(sims))
+        return {"account_credit": credit, "sims": sims}
+
+    async def _fetch_dashboard(self) -> BeautifulSoup:
+        """Return the account page, logging in again if the session expired."""
+        page = await self._fetch_account_page()
+        if self._is_logged_in(page):
+            return page
+
+        _LOGGER.debug("Session expired, logging in again")
+        return await self.login(soup=page)
+
+    async def _fetch_account_page(self) -> BeautifulSoup:
+        """GET the account page and return it parsed."""
+        try:
+            async with self._session.get(ACCOUNT_URL, timeout=_TIMEOUT) as resp:
+                if resp.status != HTTPStatus.OK:
+                    raise AirBalticCardConnectionError(
+                        f"Account page unavailable (HTTP {resp.status})"
+                    )
+                text = await resp.text()
+        except aiohttp.ClientError as err:
+            raise AirBalticCardConnectionError(f"Request failed: {err}") from err
+
+        return BeautifulSoup(text, "html.parser")
+
+    @staticmethod
+    def _extract_nonce(soup: BeautifulSoup) -> str | None:
+        """Return the WooCommerce login nonce carried by a parsed page."""
+        field = soup.find("input", {"name": _NONCE_FIELD})
+        if not field:
+            return None
+        return _attr(field, "value") or None
+
     @staticmethod
     def _is_logged_in(soup: BeautifulSoup) -> bool:
         """Tell whether *soup* is an authenticated account page.
@@ -148,40 +181,6 @@ class AirBalticCardAPI:
             soup.find("div", class_="js-label-container")
             or soup.find("div", class_="sideTable_side")
         )
-
-    async def _fetch_dashboard(self) -> BeautifulSoup:
-        """Return the account page, logging in again if the session expired."""
-        page = await self._fetch_account_page()
-        if self._is_logged_in(page):
-            return page
-
-        _LOGGER.debug("Session expired, logging in again")
-        # login() checks the page it returns and raises if the credentials no
-        # longer work, so there is nothing left to verify here.
-        return await self.login(soup=page)
-
-    async def _fetch_account_page(self) -> BeautifulSoup:
-        """GET the account page and return it parsed."""
-        try:
-            async with self._session.get(ACCOUNT_URL, timeout=_TIMEOUT) as resp:
-                if resp.status != HTTPStatus.OK:
-                    raise AirBalticCardConnectionError(
-                        f"Account page unavailable (HTTP {resp.status})"
-                    )
-                text = await resp.text()
-        except aiohttp.ClientError as err:
-            raise AirBalticCardConnectionError(f"Request failed: {err}") from err
-
-        return BeautifulSoup(text, "html.parser")
-
-    async def get_sim_cards(self) -> dict[str, Any]:
-        """Fetch SIM cards and account-level credit."""
-        soup = await self._fetch_dashboard()
-        sims = self._parse_sims(soup)
-        credit = self._parse_account_credit(soup)
-
-        _LOGGER.debug("Parsed account credit %s and %d SIM card(s)", credit, len(sims))
-        return {"account_credit": credit, "sims": sims}
 
     @staticmethod
     def _parse_account_credit(soup: BeautifulSoup) -> float | None:

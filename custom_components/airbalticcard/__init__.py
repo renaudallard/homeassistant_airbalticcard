@@ -25,17 +25,14 @@ async def async_setup_entry(
 ) -> bool:
     """Set up AirBalticCard from a config entry."""
     username: str = entry.data[CONF_USERNAME]
-    password: str = entry.data[CONF_PASSWORD]
 
     # The portal authenticates with a cookie, so each entry needs a session of
     # its own. The shared session would let two accounts overwrite each other.
     # It is detached automatically when the entry unloads.
     session = async_create_clientsession(hass)
-    api = AirBalticCardAPI(username, password, session)
+    api = AirBalticCardAPI(username, entry.data[CONF_PASSWORD], session)
 
     coordinator = AirBalticCardCoordinator(hass, entry, api)
-
-    # Blocking: wait for the first refresh before entity setup
     await coordinator.async_config_entry_first_refresh()
 
     entry.runtime_data = AirBalticCardRuntimeData(
@@ -53,7 +50,7 @@ async def async_setup_entry(
 async def async_unload_entry(
     hass: HomeAssistant, entry: AirBalticCardConfigEntry
 ) -> bool:
-    """Unload a config entry and clean up resources."""
+    """Unload a config entry."""
     return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 
