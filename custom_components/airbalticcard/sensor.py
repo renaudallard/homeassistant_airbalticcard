@@ -3,12 +3,11 @@
 from __future__ import annotations
 
 import logging
-from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.const import CURRENCY_EURO
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import BALANCE_CRITICAL, BALANCE_WARNING, DOMAIN
@@ -29,40 +28,40 @@ async def async_setup_entry(
     """Set up the account sensors and follow the SIM cards as they appear."""
     runtime = entry.runtime_data
     coordinator = runtime.coordinator
+    known: set[str] = set()
 
-    sensors: list[SensorEntity] = []
+    @callback
+    def _add_new_sims() -> None:
+        """Add sensors for SIM cards that have no entities yet."""
+        entities: list[SensorEntity] = []
+        for sim in coordinator.data.get("sims", []):
+            number = sim.get("number")
+            if not number or number in known:
+                continue
+            known.add(number)
+            entities.append(
+                AirBalticCardSimBalanceSensor(coordinator, runtime.account_id, number)
+            )
+            entities.append(
+                AirBalticCardSimDescriptionSensor(
+                    coordinator, runtime.account_id, number
+                )
+            )
+        if entities:
+            async_add_entities(entities)
 
-    data: Mapping[str, Any] = coordinator.data or {}
-
-    if data.get("account_credit") is not None:
-        sensors.append(
+    async_add_entities(
+        [
             AirBalticCardAccountSensor(
                 coordinator, runtime.account_id, runtime.username
-            )
-        )
-
-    if data.get("sims"):
-        sensors.append(
+            ),
             AirBalticCardTotalSimCreditSensor(
                 coordinator, runtime.account_id, runtime.username
-            )
-        )
-
-    for sim in data.get("sims", []):
-        sim_number = sim.get("number")
-        if not sim_number:
-            continue
-        sensors.append(
-            AirBalticCardSimBalanceSensor(coordinator, runtime.account_id, sim_number)
-        )
-        sensors.append(
-            AirBalticCardSimDescriptionSensor(
-                coordinator, runtime.account_id, sim_number
-            )
-        )
-
-    if sensors:
-        async_add_entities(sensors, update_before_add=True)
+            ),
+        ]
+    )
+    _add_new_sims()
+    entry.async_on_unload(coordinator.async_add_listener(_add_new_sims))
 
 
 class AirBalticCardAccountSensor(AirBalticCardAccountEntity, SensorEntity):
