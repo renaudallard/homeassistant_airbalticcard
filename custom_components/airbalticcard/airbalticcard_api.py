@@ -1,7 +1,12 @@
-import aiohttp
+"""HTTP client for the AirBalticCard customer portal."""
+
+from __future__ import annotations
+
 import logging
+from typing import Any
+
+import aiohttp
 from bs4 import BeautifulSoup
-from typing import Any, Dict
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -128,11 +133,11 @@ class AirBalticCardAPI:
 
         return soup
 
-    async def get_sim_cards(self) -> Dict[str, Any]:
+    async def get_sim_cards(self) -> dict[str, Any]:
         """Fetch SIM cards and account-level credit."""
         soup = await self._fetch_dashboard()
 
-        result: Dict[str, Any] = {"account_credit": None, "sims": []}
+        result: dict[str, Any] = {"account_credit": None, "sims": []}
 
         # --- Account-level credit ---
         for account_block in soup.find_all("div", class_="sideTable_side"):
