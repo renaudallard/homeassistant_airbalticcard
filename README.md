@@ -225,4 +225,4 @@ Contributions welcome: bug reports, PRs, translations.
 
 ## License
 
-MIT (see repository).
+MIT. See [LICENSE](LICENSE).
