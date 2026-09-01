@@ -3,27 +3,18 @@
 from __future__ import annotations
 
 import logging
-from datetime import timedelta
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from homeassistant.helpers.typing import ConfigType
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .airbalticcard_api import AirBalticCardAPI, AirBalticCardAuthError
-from .const import (
-    CONF_RETRY_INTERVAL,
-    CONF_SCAN_INTERVAL,
-    DEFAULT_RETRY_INTERVAL,
-    DEFAULT_SCAN_INTERVAL,
-    DOMAIN,
-    PLATFORMS,
-)
+from .airbalticcard_api import AirBalticCardAPI
+from .const import DOMAIN, PLATFORMS
+from .coordinator import AirBalticCardCoordinator
 from .models import AirBalticCardRuntimeData
 
 _LOGGER = logging.getLogger(__name__)
@@ -46,55 +37,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     session = async_create_clientsession(hass)
     api = AirBalticCardAPI(username, password, session)
 
-    def _get_intervals(
-        cfg_entry: ConfigEntry,
-    ) -> tuple[timedelta, timedelta]:
-        scan = cfg_entry.options.get(CONF_SCAN_INTERVAL, DEFAULT_SCAN_INTERVAL)
-        retry = cfg_entry.options.get(CONF_RETRY_INTERVAL, DEFAULT_RETRY_INTERVAL)
-        return timedelta(seconds=scan), timedelta(seconds=retry)
-
-    success_interval, retry_interval_delta = _get_intervals(entry)
-
-    coordinator_ref: dict[str, DataUpdateCoordinator[dict[str, Any]] | None] = {
-        "coordinator": None
-    }
-
-    async def async_update_data() -> dict[str, Any]:
-        """Fetch data periodically and handle errors."""
-        cur_success, cur_retry = _get_intervals(entry)
-        try:
-            data = await api.get_sim_cards()
-        except AirBalticCardAuthError as err:
-            # Ask the user for a new password instead of retrying forever.
-            raise ConfigEntryAuthFailed(str(err)) from err
-        except Exception as err:
-            _LOGGER.warning(
-                "Failed to fetch AirBalticCard data: %s (retry in %ss)",
-                err,
-                cur_retry.total_seconds(),
-            )
-            coordinator_obj = coordinator_ref["coordinator"]
-            if coordinator_obj and coordinator_obj.update_interval != cur_retry:
-                coordinator_obj.update_interval = cur_retry
-            raise UpdateFailed(
-                f"Error communicating with AirBalticCard: {err}"
-            ) from err
-
-        coordinator_obj = coordinator_ref["coordinator"]
-        if coordinator_obj and coordinator_obj.update_interval != cur_success:
-            coordinator_obj.update_interval = cur_success
-
-        return data
-
-    coordinator = DataUpdateCoordinator(
-        hass,
-        _LOGGER,
-        name=DOMAIN,
-        update_method=async_update_data,
-        update_interval=success_interval,
-    )
-
-    coordinator_ref["coordinator"] = coordinator
+    coordinator = AirBalticCardCoordinator(hass, entry, api)
 
     # Blocking: wait for the first refresh before entity setup
     await coordinator.async_config_entry_first_refresh()
@@ -113,12 +56,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
-    _LOGGER.info(
-        "AirBalticCard integration started for %s (scan=%ss, retry=%ss)",
-        username,
-        success_interval.total_seconds(),
-        retry_interval_delta.total_seconds(),
-    )
+    _LOGGER.debug("AirBalticCard integration started for %s", username)
     return True
 
 

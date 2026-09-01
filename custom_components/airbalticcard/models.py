@@ -3,15 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator
+from .coordinator import AirBalticCardCoordinator
 
 
 @dataclass(slots=True)
 class AirBalticCardRuntimeData:
     """Runtime data stored on the config entry."""
 
-    coordinator: DataUpdateCoordinator[dict[str, Any]]
+    coordinator: AirBalticCardCoordinator
     account_id: str
     username: str
