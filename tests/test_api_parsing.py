@@ -33,6 +33,46 @@ def test_parse_amount(text, expected):
     assert parse_amount(text) == expected
 
 
+def test_logged_out_page_with_a_logout_link_in_the_menu():
+    """A login form outweighs a logout link left in the site menu."""
+    page = soup(
+        '<nav><a href="/my-account/?customer-logout=true">Log out</a></nav>'
+        '<form><input name="woocommerce-login-nonce" value="abc"></form>'
+    )
+    assert AirBalticCardAPI._is_logged_in(page) is False
+
+
+def test_error_banner_means_logged_out():
+    """A WooCommerce error banner means the login was rejected."""
+    page = soup('<ul class="woocommerce-error"><li>Wrong password</li></ul>')
+    assert AirBalticCardAPI._is_logged_in(page) is False
+
+
+def test_logout_mention_in_a_script_is_not_a_session():
+    """Text in a script tag is not evidence of a session."""
+    page = soup("<script>var url = '/wp/logout';</script><p>Session ended.</p>")
+    assert AirBalticCardAPI._is_logged_in(page) is False
+
+
+def test_logout_link_means_logged_in():
+    """A real logout link is accepted."""
+    page = soup('<a href="/my-account/?customer-logout=true">Log out</a>')
+    assert AirBalticCardAPI._is_logged_in(page) is True
+
+
+def test_account_tables_mean_logged_in():
+    """Account content is accepted when the logout link sits behind a menu."""
+    page = soup('<div class="sideTable_side"></div>')
+    assert AirBalticCardAPI._is_logged_in(page) is True
+
+
+def test_nonce_extraction():
+    """The login nonce is read out of the form."""
+    page = soup('<input name="woocommerce-login-nonce" value="9f8e7d">')
+    assert AirBalticCardAPI._extract_nonce(page) == "9f8e7d"
+    assert AirBalticCardAPI._extract_nonce(soup("<p>nothing</p>")) is None
+
+
 SIM_ROW = (
     "<table><tr>"
     '<td><div class="js-label-container" data-number="37120000000">'

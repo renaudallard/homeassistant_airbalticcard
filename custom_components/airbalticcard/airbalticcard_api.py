@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
+from http import HTTPStatus
 from typing import Any
 
 import aiohttp
@@ -13,6 +14,7 @@ _LOGGER = logging.getLogger(__name__)
 
 ACCOUNT_URL = "https://airbalticcard.com/my-account/"
 _TIMEOUT = aiohttp.ClientTimeout(total=15)
+_NONCE_FIELD = "woocommerce-login-nonce"
 
 # A leading digit followed by digits, group separators and a decimal separator.
 _AMOUNT_RE = re.compile(r"-?\d[\d\s\u00a0\u202f.,]*")
@@ -65,9 +67,9 @@ class AirBalticCardAPI:
         self._session = session
 
     @staticmethod
-    def _extract_nonce_from_soup(soup: BeautifulSoup) -> str | None:
-        """Extract the WooCommerce login nonce from a parsed page."""
-        field = soup.find("input", {"name": "woocommerce-login-nonce"})
+    def _extract_nonce(soup: BeautifulSoup) -> str | None:
+        """Return the WooCommerce login nonce carried by a parsed page."""
+        field = soup.find("input", {"name": _NONCE_FIELD})
         if not field:
             return None
         return _attr(field, "value") or None
@@ -78,24 +80,17 @@ class AirBalticCardAPI:
         If *soup* is provided, the nonce is extracted from it directly
         instead of making an extra GET request.
         """
-        nonce = self._extract_nonce_from_soup(soup) if soup else None
+        nonce = self._extract_nonce(soup) if soup else None
 
         if not nonce:
-            async with self._session.get(ACCOUNT_URL, timeout=_TIMEOUT) as resp:
-                if resp.status != 200:
-                    raise ConnectionError(
-                        f"Login page unavailable (HTTP {resp.status})"
-                    )
-                text = await resp.text()
-            soup = BeautifulSoup(text, "html.parser")
-            nonce = self._extract_nonce_from_soup(soup)
+            nonce = self._extract_nonce(await self._fetch_account_page())
             if not nonce:
                 raise ConnectionError("Could not retrieve login nonce from page")
 
         payload = {
             "username": self._username,
             "password": self._password,
-            "woocommerce-login-nonce": nonce,
+            _NONCE_FIELD: nonce,
             "login": "Log in",
         }
 
@@ -107,64 +102,58 @@ class AirBalticCardAPI:
         ) as resp:
             text = await resp.text()
 
-        result_soup = BeautifulSoup(text, "html.parser")
-        if not self._is_logged_in(result_soup, text):
+        page = BeautifulSoup(text, "html.parser")
+        if not self._is_logged_in(page):
             raise ValueError("Invalid username or password")
 
-        _LOGGER.info("Login successful for %s", self._username)
-        return result_soup
+        _LOGGER.debug("Logged in to AirBalticCard")
+        return page
 
     @staticmethod
-    def _is_logged_in(soup: BeautifulSoup, html: str) -> bool:
-        """Check if user is logged in based on page content.
+    def _is_logged_in(soup: BeautifulSoup) -> bool:
+        """Tell whether *soup* is an authenticated account page.
 
-        Uses multiple indicators for robust authentication verification:
-        - Presence of logout link
-        - Absence of login form
-        - Presence of WooCommerce error messages indicating failed login
+        The negative signals are checked first: an error banner or a login form
+        means we are logged out whatever else the page happens to contain, and
+        a site menu can carry a logout link on both sides of the login.
         """
-        # Check for WooCommerce error containers (indicates login failure)
-        wc_error = soup.find("ul", class_="woocommerce-error") or soup.find(
-            "div", class_="woocommerce-error"
-        )
-        if wc_error:
+        if soup.find(class_="woocommerce-error"):
+            return False
+        if soup.find("input", {"name": _NONCE_FIELD}):
             return False
 
-        # Check for logout link (primary indicator of logged-in state)
         for link in soup.find_all("a"):
-            link_text = link.get_text(strip=True)
-            if link_text and "logout" in link_text.lower():
+            if "logout" in link.get_text(strip=True).lower():
                 return True
-            href = link.get("href", "")
-            if isinstance(href, list):
-                href = href[0] if href else ""
-            if href and "logout" in href.lower():
+            if "logout" in _attr(link, "href").lower():
                 return True
 
-        # Check if login form is still present (indicates NOT logged in)
-        login_form = soup.find("input", {"name": "woocommerce-login-nonce"})
-        if login_form:
-            return False
-
-        # Fallback: check for "logout" text anywhere in the page
-        return "logout" in html.lower()
+        # Some layouts hide the logout link inside a menu. Seeing the account
+        # tables proves the session just as well.
+        return bool(
+            soup.find("div", class_="js-label-container")
+            or soup.find("div", class_="sideTable_side")
+        )
 
     async def _fetch_dashboard(self) -> BeautifulSoup:
+        """Return the account page, logging in again if the session expired."""
+        page = await self._fetch_account_page()
+        if self._is_logged_in(page):
+            return page
+
+        _LOGGER.debug("Session expired, logging in again")
+        # login() checks the page it returns and raises if the credentials no
+        # longer work, so there is nothing left to verify here.
+        return await self.login(soup=page)
+
+    async def _fetch_account_page(self) -> BeautifulSoup:
+        """GET the account page and return it parsed."""
         async with self._session.get(ACCOUNT_URL, timeout=_TIMEOUT) as resp:
+            if resp.status != HTTPStatus.OK:
+                raise ConnectionError(f"Account page unavailable (HTTP {resp.status})")
             text = await resp.text()
 
-        soup = BeautifulSoup(text, "html.parser")
-
-        if not self._is_logged_in(soup, text):
-            _LOGGER.info("Session expired — reauthenticating...")
-            # Pass the soup we already parsed so login() can extract
-            # the nonce without an extra GET or parse.  login() returns
-            # the parsed response page directly.
-            soup = await self.login(soup=soup)
-            if not self._is_logged_in(soup, str(soup)):
-                raise ValueError("Could not reestablish session after re-login")
-
-        return soup
+        return BeautifulSoup(text, "html.parser")
 
     async def get_sim_cards(self) -> dict[str, Any]:
         """Fetch SIM cards and account-level credit."""
