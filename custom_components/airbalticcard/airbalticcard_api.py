@@ -64,6 +64,11 @@ def parse_amount(text: str) -> float | None:
         return None
 
 
+def _describe(err: BaseException) -> str:
+    """Return a readable description, since a timeout carries no message."""
+    return str(err) or type(err).__name__
+
+
 def _attr(tag: Any, name: str) -> str:
     """Return a tag attribute as a plain stripped string."""
     value = tag.get(name, "")
@@ -114,8 +119,10 @@ class AirBalticCardAPI:
                 ACCOUNT_URL, data=payload, allow_redirects=True, timeout=_TIMEOUT
             ) as resp:
                 text = await resp.text()
-        except aiohttp.ClientError as err:
-            raise AirBalticCardConnectionError(f"Login request failed: {err}") from err
+        except (aiohttp.ClientError, TimeoutError) as err:
+            raise AirBalticCardConnectionError(
+                f"Login request failed: {_describe(err)}"
+            ) from err
 
         page = BeautifulSoup(text, "html.parser")
         if not self._is_logged_in(page):
@@ -151,8 +158,10 @@ class AirBalticCardAPI:
                         f"Account page unavailable (HTTP {resp.status})"
                     )
                 text = await resp.text()
-        except aiohttp.ClientError as err:
-            raise AirBalticCardConnectionError(f"Request failed: {err}") from err
+        except (aiohttp.ClientError, TimeoutError) as err:
+            raise AirBalticCardConnectionError(
+                f"Request failed: {_describe(err)}"
+            ) from err
 
         return BeautifulSoup(text, "html.parser")
 
