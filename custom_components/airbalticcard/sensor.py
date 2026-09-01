@@ -10,14 +10,11 @@ from homeassistant.components.sensor import SensorDeviceClass, SensorEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CURRENCY_EURO
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import (
-    CoordinatorEntity,
-    DataUpdateCoordinator,
-)
 
 from .const import DOMAIN
+from .coordinator import AirBalticCardCoordinator
+from .entity import AirBalticCardAccountEntity, AirBalticCardSimEntity
 from .models import AirBalticCardRuntimeData
 
 _LOGGER = logging.getLogger(__name__)
@@ -78,26 +75,21 @@ async def async_setup_entry(
 # ================================================================
 # Account-level sensor
 # ================================================================
-class AirBalticCardAccountSensor(
-    CoordinatorEntity[DataUpdateCoordinator[dict[str, Any]]], SensorEntity
-):
+class AirBalticCardAccountSensor(AirBalticCardAccountEntity, SensorEntity):
     """Sensor showing total account credit."""
 
     _attr_device_class = SensorDeviceClass.MONETARY
     _attr_native_unit_of_measurement = CURRENCY_EURO
     _attr_icon = "mdi:wallet"
     _attr_translation_key = "account_credit"
-    _attr_has_entity_name = True
 
     def __init__(
         self,
-        coordinator: DataUpdateCoordinator[dict[str, Any]],
+        coordinator: AirBalticCardCoordinator,
         account_id: str,
         username: str,
     ) -> None:
-        super().__init__(coordinator)
-        self._account_id = account_id
-        self._username = username
+        super().__init__(coordinator, account_id, username)
         self._attr_unique_id = f"{DOMAIN}_{account_id}_account_credit"
         self._attr_name = "Account Credit"
 
@@ -105,43 +97,25 @@ class AirBalticCardAccountSensor(
     def native_value(self) -> float | None:
         return (self.coordinator.data or {}).get("account_credit")
 
-    @property
-    def available(self):
-        return self.coordinator.last_update_success
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        return DeviceInfo(
-            identifiers={(DOMAIN, f"{self._account_id}_account")},
-            name=f"AirBalticCard Account ({self._username})",
-            manufacturer="AirBaltic",
-            model="Prepaid SIM Platform",
-        )
-
 
 # ================================================================
 # Total SIM Credit sensor
 # ================================================================
-class AirBalticCardTotalSimCreditSensor(
-    CoordinatorEntity[DataUpdateCoordinator[dict[str, Any]]], SensorEntity
-):
+class AirBalticCardTotalSimCreditSensor(AirBalticCardAccountEntity, SensorEntity):
     """Sensor summing all SIM card balances."""
 
     _attr_device_class = SensorDeviceClass.MONETARY
     _attr_native_unit_of_measurement = CURRENCY_EURO
     _attr_icon = "mdi:cash-multiple"
     _attr_translation_key = "total_sim_credit"
-    _attr_has_entity_name = True
 
     def __init__(
         self,
-        coordinator: DataUpdateCoordinator[dict[str, Any]],
+        coordinator: AirBalticCardCoordinator,
         account_id: str,
         username: str,
     ) -> None:
-        super().__init__(coordinator)
-        self._account_id = account_id
-        self._username = username
+        super().__init__(coordinator, account_id, username)
         self._attr_unique_id = f"{DOMAIN}_{account_id}_total_sim_credit"
         self._attr_name = "Total SIM Credit"
 
@@ -156,55 +130,30 @@ class AirBalticCardTotalSimCreditSensor(
             return None
         return round(sum(balances), 2)
 
-    @property
-    def available(self):
-        return self.coordinator.last_update_success
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        return DeviceInfo(
-            identifiers={(DOMAIN, f"{self._account_id}_account")},
-            name=f"AirBalticCard Account ({self._username})",
-            manufacturer="AirBaltic",
-            model="Prepaid SIM Platform",
-        )
-
 
 # ================================================================
 # Individual SIM BALANCE sensors (with dynamic icons + severity)
 # ================================================================
-class AirBalticCardSimBalanceSensor(
-    CoordinatorEntity[DataUpdateCoordinator[dict[str, Any]]], SensorEntity
-):
+class AirBalticCardSimBalanceSensor(AirBalticCardSimEntity, SensorEntity):
     """Sensor showing SIM card balance with dynamic icons."""
 
     _attr_device_class = SensorDeviceClass.MONETARY
     _attr_native_unit_of_measurement = CURRENCY_EURO
     _attr_translation_key = "sim_balance"
-    _attr_has_entity_name = True
 
     def __init__(
         self,
-        coordinator: DataUpdateCoordinator[dict[str, Any]],
+        coordinator: AirBalticCardCoordinator,
         account_id: str,
         sim_number: str,
     ) -> None:
-        super().__init__(coordinator)
-        self._account_id = account_id
-        self._sim_number = sim_number
+        super().__init__(coordinator, account_id, sim_number)
         self._attr_unique_id = f"{DOMAIN}_{account_id}_{sim_number}_balance"
         self._attr_name = "Balance"
 
-    def _find_sim(self) -> dict[str, Any] | None:
-        data = self.coordinator.data or {}
-        for sim in data.get("sims", []):
-            if sim.get("number") == self._sim_number:
-                return sim
-        return None
-
     @property
     def native_value(self) -> float | None:
-        sim = self._find_sim()
+        sim = self.sim
         return sim.get("credit") if sim else None
 
     @property
@@ -220,7 +169,7 @@ class AirBalticCardSimBalanceSensor(
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        sim = self._find_sim() or {}
+        sim = self.sim or {}
         val = sim.get("credit")
         effective = val if val is not None else 0
         severity = (
@@ -232,69 +181,29 @@ class AirBalticCardSimBalanceSensor(
             "balance_state": severity,
         }
 
-    @property
-    def available(self):
-        return self.coordinator.last_update_success
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        return DeviceInfo(
-            identifiers={(DOMAIN, f"{self._account_id}_{self._sim_number}")},
-            name=f"SIM {self._sim_number}",
-            manufacturer="AirBaltic",
-            model="Prepaid SIM",
-            via_device=(DOMAIN, f"{self._account_id}_account"),
-        )
-
 
 # ================================================================
 # Individual SIM DESCRIPTION sensors
 # ================================================================
-class AirBalticCardSimDescriptionSensor(
-    CoordinatorEntity[DataUpdateCoordinator[dict[str, Any]]], SensorEntity
-):
+class AirBalticCardSimDescriptionSensor(AirBalticCardSimEntity, SensorEntity):
     """Sensor showing SIM card description/label."""
 
     _attr_icon = "mdi:label"
     _attr_translation_key = "sim_description"
-    _attr_has_entity_name = True
 
     def __init__(
         self,
-        coordinator: DataUpdateCoordinator[dict[str, Any]],
+        coordinator: AirBalticCardCoordinator,
         account_id: str,
         sim_number: str,
     ) -> None:
-        super().__init__(coordinator)
-        self._account_id = account_id
-        self._sim_number = sim_number
+        super().__init__(coordinator, account_id, sim_number)
         self._attr_unique_id = f"{DOMAIN}_{account_id}_{sim_number}_description"
         self._attr_name = "Description"
 
-    def _find_sim(self) -> dict[str, Any] | None:
-        data = self.coordinator.data or {}
-        for sim in data.get("sims", []):
-            if sim.get("number") == self._sim_number:
-                return sim
-        return None
-
     @property
     def native_value(self):
-        sim = self._find_sim()
+        sim = self.sim
         if not sim:
             return None
         return sim.get("name")
-
-    @property
-    def available(self):
-        return self.coordinator.last_update_success
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        return DeviceInfo(
-            identifiers={(DOMAIN, f"{self._account_id}_{self._sim_number}")},
-            name=f"SIM {self._sim_number}",
-            manufacturer="AirBaltic",
-            model="Prepaid SIM",
-            via_device=(DOMAIN, f"{self._account_id}_account"),
-        )

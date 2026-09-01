@@ -3,20 +3,16 @@
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.update_coordinator import (
-    CoordinatorEntity,
-    DataUpdateCoordinator,
-)
 
 from .const import DOMAIN
+from .coordinator import AirBalticCardCoordinator
+from .entity import AirBalticCardAccountEntity
 from .models import AirBalticCardRuntimeData
 
 _LOGGER = logging.getLogger(__name__)
@@ -42,12 +38,9 @@ async def async_setup_entry(
     _LOGGER.debug("AirBalticCard Refresh button registered.")
 
 
-class AirBalticCardRefreshButton(
-    CoordinatorEntity[DataUpdateCoordinator[dict[str, Any]]], ButtonEntity
-):
+class AirBalticCardRefreshButton(AirBalticCardAccountEntity, ButtonEntity):
     """Button entity to manually refresh AirBalticCard data."""
 
-    _attr_has_entity_name = True
     _attr_name = "Manual Refresh"
     _attr_icon = "mdi:refresh"
     _attr_entity_category = EntityCategory.DIAGNOSTIC
@@ -55,13 +48,11 @@ class AirBalticCardRefreshButton(
 
     def __init__(
         self,
-        coordinator: DataUpdateCoordinator[dict[str, Any]],
+        coordinator: AirBalticCardCoordinator,
         account_id: str,
         username: str,
     ) -> None:
-        super().__init__(coordinator)
-        self._account_id = account_id
-        self._username = username
+        super().__init__(coordinator, account_id, username)
         self._attr_unique_id = f"{DOMAIN}_{account_id}_refresh"
 
     async def async_press(self) -> None:
@@ -72,16 +63,3 @@ class AirBalticCardRefreshButton(
             _LOGGER.debug("Manual AirBalticCard refresh completed successfully.")
         except Exception as err:
             _LOGGER.warning("Manual refresh failed: %s", err)
-
-    @property
-    def available(self) -> bool:
-        return self.coordinator.last_update_success
-
-    @property
-    def device_info(self) -> DeviceInfo:
-        return DeviceInfo(
-            identifiers={(DOMAIN, f"{self._account_id}_account")},
-            name=f"AirBalticCard Account ({self._username})",
-            manufacturer="AirBaltic",
-            model="Prepaid SIM Platform",
-        )
