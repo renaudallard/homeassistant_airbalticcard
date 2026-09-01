@@ -1,7 +1,15 @@
 """Tests for the page parsing done by the AirBalticCard client."""
 
+import asyncio
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
-from airbalticcard_api import AirBalticCardAPI, parse_amount
+from airbalticcard_api import (
+    AirBalticCardAPI,
+    AirBalticCardAuthError,
+    AirBalticCardConnectionError,
+    parse_amount,
+)
 from bs4 import BeautifulSoup
 
 
@@ -159,3 +167,52 @@ def test_the_balance_wins_over_an_earlier_tariff_cell():
         "</tr></table>"
     )
     assert AirBalticCardAPI._parse_sims(page)[0]["credit"] == 12.34
+
+
+def api_returning(get_html, post_html=None):
+    """Build a client answering GET with *get_html* and POST with *post_html*."""
+
+    def responder(html):
+        response = MagicMock()
+        response.status = 200
+        response.text = AsyncMock(return_value=html)
+        ctx = MagicMock()
+        ctx.__aenter__ = AsyncMock(return_value=response)
+        ctx.__aexit__ = AsyncMock(return_value=False)
+        return MagicMock(return_value=ctx)
+
+    session = MagicMock()
+    session.get = responder(get_html)
+    session.post = responder(get_html if post_html is None else post_html)
+    return AirBalticCardAPI("user", "secret", session)
+
+
+LOGIN_FORM = '<input name="woocommerce-login-nonce" value="nonce">'
+
+
+def test_refused_credentials_raise_an_auth_error():
+    """The login form coming back means the password was refused."""
+    client = api_returning(
+        LOGIN_FORM + '<ul class="woocommerce-error"><li>no</li></ul>'
+    )
+    with pytest.raises(AirBalticCardAuthError):
+        asyncio.run(client.login())
+
+
+def test_a_login_that_fails_for_another_reason_is_a_connection_error():
+    """Without the form the failure is not about the credentials."""
+    client = api_returning('<ul class="woocommerce-error"><li>Maintenance</li></ul>')
+    with pytest.raises(AirBalticCardConnectionError):
+        asyncio.run(client.login())
+
+
+def test_a_successful_login_returns_the_session_page():
+    """A response carrying the account tables ends the login."""
+    client = api_returning(
+        LOGIN_FORM,
+        '<div class="sideTable_side">'
+        '<div class="sideTable_title">Available credit for account</div>'
+        '<div class="sideTable_text">125,00 EUR</div></div>',
+    )
+    page = asyncio.run(client.login())
+    assert AirBalticCardAPI._parse_account_credit(page) == 125.0

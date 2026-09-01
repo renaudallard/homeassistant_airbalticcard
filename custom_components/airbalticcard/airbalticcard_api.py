@@ -44,9 +44,9 @@ class AirBalticCardAuthError(AirBalticCardError):
 def parse_amount(text: str) -> float | None:
     """Return the amount contained in *text*, or None when there is none.
 
-    Accepts the symbol on either side and in either decimal convention, so
-    "EUR 1 234,56" and "$1,234.56"-style groupings both come out right. The
-    separator that appears last is the decimal one.
+    Accepts the currency on either side and in either decimal convention, so
+    "EUR 1 234,56" and "€1,250.00" both come out right. The separator that
+    appears last is the decimal one.
     """
     match = _AMOUNT_RE.search(text)
     if not match:
@@ -125,11 +125,18 @@ class AirBalticCardAPI:
             ) from err
 
         page = BeautifulSoup(text, "html.parser")
-        if not self._is_logged_in(page):
+        if self._is_logged_in(page):
+            _LOGGER.debug("Logged in to AirBalticCard")
+            return page
+
+        # WooCommerce re-renders the login form when it refuses the
+        # credentials. A page without it failed for some other reason, such as
+        # maintenance or a stray notice, and is worth retrying rather than
+        # asking the user for a password that is probably fine.
+        if page.find("input", {"name": _NONCE_FIELD}):
             raise AirBalticCardAuthError("Invalid username or password")
 
-        _LOGGER.debug("Logged in to AirBalticCard")
-        return page
+        raise AirBalticCardConnectionError("Login did not establish a session")
 
     async def get_sim_cards(self) -> dict[str, Any]:
         """Return the account credit and every SIM card on the account."""
