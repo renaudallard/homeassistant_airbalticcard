@@ -1,14 +1,20 @@
 {
   "domain": "airbalticcard",
   "name": "AirBalticCard SIM Balance",
-  "version": "1.2.1",
-  "integration_type": "hub",
-  "documentation": "https://github.com/renaudallard/homeassistant_airbalticcard",
-  "issue_tracker": "https://github.com/renaudallard/homeassistant_airbalticcard/issues",
-  "dependencies": [],
-  "codeowners": ["@renaudallard"],
-  "requirements": ["beautifulsoup4>=4.12.0"],
-  "loggers": ["custom_components.airbalticcard"],
+  "codeowners": [
+    "@renaudallard"
+  ],
   "config_flow": true,
-  "iot_class": "cloud_polling"
+  "dependencies": [],
+  "documentation": "https://github.com/renaudallard/homeassistant_airbalticcard",
+  "integration_type": "hub",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/renaudallard/homeassistant_airbalticcard/issues",
+  "loggers": [
+    "custom_components.airbalticcard"
+  ],
+  "requirements": [
+    "beautifulsoup4>=4.12.0"
+  ],
+  "version": "1.2.1"
 }
