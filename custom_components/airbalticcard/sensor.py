@@ -107,15 +107,15 @@ class AirBalticCardTotalSimCreditSensor(AirBalticCardAccountEntity, SensorEntity
 
     @property
     def native_value(self) -> float | None:
-        """Return the sum of every SIM balance that could be read."""
-        balances = [
-            sim["credit"]
-            for sim in self.coordinator.data.get("sims", [])
-            if sim.get("credit") is not None
-        ]
-        if not balances:
+        """Return the sum of the SIM balances.
+
+        A total that quietly leaves out a SIM reads as the real figure, so it
+        stays unknown until every balance on the account could be read.
+        """
+        sims = self.coordinator.data.get("sims", [])
+        if not sims or any(sim.get("credit") is None for sim in sims):
             return None
-        return round(sum(balances), 2)
+        return round(sum(sim["credit"] for sim in sims), 2)
 
 
 class AirBalticCardSimBalanceSensor(AirBalticCardSimEntity, SensorEntity):

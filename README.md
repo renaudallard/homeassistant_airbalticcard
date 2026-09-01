@@ -24,7 +24,7 @@
 | | |
 |---|---|
 | **Account credit** | Total account balance in EUR |
-| **Total SIM credit** | Sum of all SIM card balances |
+| **Total SIM credit** | Sum of all SIM balances, unknown if any cannot be read |
 | **Per-SIM balance** | Individual credit with status icons |
 | **Per-SIM description** | SIM name / label |
 | **Manual refresh** | Diagnostic button for on-demand updates |
