@@ -8,13 +8,14 @@ from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
-from .airbalticcard_api import AirBalticCardAPI
+from .airbalticcard_api import AirBalticCardAPI, AirBalticCardAuthError
 from .const import (
     CONF_RETRY_INTERVAL,
     CONF_SCAN_INTERVAL,
@@ -63,6 +64,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         cur_success, cur_retry = _get_intervals(entry)
         try:
             data = await api.get_sim_cards()
+        except AirBalticCardAuthError as err:
+            # Ask the user for a new password instead of retrying forever.
+            raise ConfigEntryAuthFailed(str(err)) from err
         except Exception as err:
             _LOGGER.warning(
                 "Failed to fetch AirBalticCard data: %s (retry in %ss)",

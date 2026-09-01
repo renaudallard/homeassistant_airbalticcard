@@ -14,7 +14,11 @@ from .const import (
     DEFAULT_SCAN_INTERVAL,
     DEFAULT_RETRY_INTERVAL,
 )
-from .airbalticcard_api import AirBalticCardAPI
+from .airbalticcard_api import (
+    AirBalticCardAPI,
+    AirBalticCardAuthError,
+    AirBalticCardConnectionError,
+)
 
 
 DATA_SCHEMA = vol.Schema(
@@ -23,6 +27,9 @@ DATA_SCHEMA = vol.Schema(
         vol.Required(CONF_PASSWORD): str,
     }
 )
+
+
+REAUTH_SCHEMA = vol.Schema({vol.Required(CONF_PASSWORD): str})
 
 
 class AirBalticCardConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -61,14 +68,45 @@ class AirBalticCardConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="user", data_schema=DATA_SCHEMA, errors=errors
         )
 
+    async def async_step_reauth(self, entry_data):
+        """Start the flow that asks for a new password."""
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(self, user_input=None):
+        """Check the new password and reload the entry."""
+        entry = self._get_reauth_entry()
+        errors = {}
+
+        if user_input is not None:
+            password = user_input[CONF_PASSWORD]
+            try:
+                await self._async_validate_login(entry.data[CONF_USERNAME], password)
+            except InvalidAuth:
+                errors["base"] = "invalid_auth"
+            except CannotConnect:
+                errors["base"] = "cannot_connect"
+            except Exception:
+                errors["base"] = "unknown"
+            else:
+                return self.async_update_reload_and_abort(
+                    entry, data_updates={CONF_PASSWORD: password}
+                )
+
+        return self.async_show_form(
+            step_id="reauth_confirm",
+            data_schema=REAUTH_SCHEMA,
+            errors=errors,
+            description_placeholders={CONF_USERNAME: entry.data[CONF_USERNAME]},
+        )
+
     async def _async_validate_login(self, username, password):
         """Validate user credentials."""
         session = async_create_clientsession(self.hass, auto_cleanup=False)
         try:
             await AirBalticCardAPI(username, password, session).login()
-        except ValueError as err:
+        except AirBalticCardAuthError as err:
             raise InvalidAuth from err
-        except ConnectionError as err:
+        except AirBalticCardConnectionError as err:
             raise CannotConnect from err
         finally:
             # detach, not close: the connector is shared with the rest of HA.

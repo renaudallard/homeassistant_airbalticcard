@@ -9,6 +9,13 @@
           "username": "Username or Email",
           "password": "Password"
         }
+      },
+      "reauth_confirm": {
+        "title": "Reconnect to AirBalticCard",
+        "description": "The password for {username} was rejected. Enter the current one.",
+        "data": {
+          "password": "Password"
+        }
       }
     },
     "error": {
@@ -17,7 +24,8 @@
       "unknown": "Unexpected error occurred."
     },
     "abort": {
-      "already_configured": "This account is already configured."
+      "already_configured": "This account is already configured.",
+      "reauth_successful": "Reconnected to AirBalticCard."
     }
   },
   "options": {

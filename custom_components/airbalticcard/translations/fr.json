@@ -9,6 +9,13 @@
           "username": "Nom d’utilisateur ou adresse e-mail",
           "password": "Mot de passe"
         }
+      },
+      "reauth_confirm": {
+        "title": "Reconnexion à AirBalticCard",
+        "description": "Le mot de passe de {username} a été refusé. Saisissez le mot de passe actuel.",
+        "data": {
+          "password": "Mot de passe"
+        }
       }
     },
     "error": {
@@ -17,7 +24,8 @@
       "unknown": "Une erreur inattendue s’est produite."
     },
     "abort": {
-      "already_configured": "Ce compte est déjà configuré."
+      "already_configured": "Ce compte est déjà configuré.",
+      "reauth_successful": "Reconnexion à AirBalticCard réussie."
     }
   },
   "options": {

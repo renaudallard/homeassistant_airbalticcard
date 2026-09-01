@@ -21,6 +21,18 @@ _AMOUNT_RE = re.compile(r"-?\d[\d\s\u00a0\u202f.,]*")
 _SPACE_RE = re.compile(r"[\s\u00a0\u202f]")
 
 
+class AirBalticCardError(Exception):
+    """Base error raised by the client."""
+
+
+class AirBalticCardConnectionError(AirBalticCardError):
+    """The portal could not be reached or returned an unusable page."""
+
+
+class AirBalticCardAuthError(AirBalticCardError):
+    """The portal rejected the credentials."""
+
+
 def parse_amount(text: str) -> float | None:
     """Return the amount contained in *text*, or None when there is none.
 
@@ -85,7 +97,9 @@ class AirBalticCardAPI:
         if not nonce:
             nonce = self._extract_nonce(await self._fetch_account_page())
             if not nonce:
-                raise ConnectionError("Could not retrieve login nonce from page")
+                raise AirBalticCardConnectionError(
+                    "Could not retrieve the login nonce from the account page"
+                )
 
         payload = {
             "username": self._username,
@@ -94,17 +108,17 @@ class AirBalticCardAPI:
             "login": "Log in",
         }
 
-        async with self._session.post(
-            ACCOUNT_URL,
-            data=payload,
-            allow_redirects=True,
-            timeout=_TIMEOUT,
-        ) as resp:
-            text = await resp.text()
+        try:
+            async with self._session.post(
+                ACCOUNT_URL, data=payload, allow_redirects=True, timeout=_TIMEOUT
+            ) as resp:
+                text = await resp.text()
+        except aiohttp.ClientError as err:
+            raise AirBalticCardConnectionError(f"Login request failed: {err}") from err
 
         page = BeautifulSoup(text, "html.parser")
         if not self._is_logged_in(page):
-            raise ValueError("Invalid username or password")
+            raise AirBalticCardAuthError("Invalid username or password")
 
         _LOGGER.debug("Logged in to AirBalticCard")
         return page
@@ -148,10 +162,15 @@ class AirBalticCardAPI:
 
     async def _fetch_account_page(self) -> BeautifulSoup:
         """GET the account page and return it parsed."""
-        async with self._session.get(ACCOUNT_URL, timeout=_TIMEOUT) as resp:
-            if resp.status != HTTPStatus.OK:
-                raise ConnectionError(f"Account page unavailable (HTTP {resp.status})")
-            text = await resp.text()
+        try:
+            async with self._session.get(ACCOUNT_URL, timeout=_TIMEOUT) as resp:
+                if resp.status != HTTPStatus.OK:
+                    raise AirBalticCardConnectionError(
+                        f"Account page unavailable (HTTP {resp.status})"
+                    )
+                text = await resp.text()
+        except aiohttp.ClientError as err:
+            raise AirBalticCardConnectionError(f"Request failed: {err}") from err
 
         return BeautifulSoup(text, "html.parser")
 
