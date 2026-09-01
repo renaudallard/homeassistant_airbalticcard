@@ -28,7 +28,8 @@
 | **Per-SIM balance** | Individual credit with status icons |
 | **Per-SIM description** | SIM name / label |
 | **Manual refresh** | Diagnostic button for on-demand updates |
-| **Multi-account** | Safe per-account scoping with automatic migration |
+| **Multi-account** | Each account polls with its own session and its own devices |
+| **Reauthentication** | Prompts for a new password instead of retrying forever |
 | **Translations** | English, French |
 
 ### Balance status icons
@@ -67,7 +68,7 @@
 
 ### Options
 
-Options take effect immediately, no reload needed.
+Saving options reloads the integration, so a new interval applies straight away.
 
 | Option | Default | Range | Description |
 |--------|---------|-------|-------------|
@@ -120,9 +121,10 @@ entities:
 
 | Problem | Cause / Fix |
 |---------|-------------|
-| **Invalid auth** | Re-check username/password. Two-factor or captchas on the site can block login. |
+| **Invalid auth** | Home Assistant asks for the password again. Two-factor or captchas on the site can block login. |
 | **Cannot connect** | Temporary site protection or downtime. The integration retries automatically. |
 | **Slow first update** | The first fetch is awaited before entities are created. Subsequent updates run in the background. |
+| **Unknown balance** | A balance that cannot be read stays unknown rather than showing 0. Enable debug logs and open an issue. |
 | **Empty/None data** | The site structure may have changed. Enable debug logs and open an issue. |
 
 ### Debug logging
@@ -142,11 +144,29 @@ Logs appear in **Settings > System > Logs** or in `home-assistant.log`.
 
 - Credentials are stored in Home Assistant's encrypted config entries.
 - Data is only exchanged with **airbalticcard.com**.
-- Uses HA's shared `aiohttp` session for connection pooling.
+- Each account uses its own `aiohttp` session, so logins never mix between accounts.
 
 ---
 
 ## Changelog
+
+### Unreleased
+- Fixed the options dialog crashing on Home Assistant 2025.12 and later.
+- Each account now polls with its own HTTP session; two accounts no longer
+  overwrote each other's login and reported the wrong balances.
+- Balances are read whether the currency sits before or after the amount, and
+  in either decimal convention. An unreadable balance stays unknown instead of
+  being reported as 0.00 and raising a false low-balance alert.
+- The login check no longer mistakes a menu link or a script for a session.
+- A rejected password now asks for a new one instead of retrying forever.
+- The manual refresh button stays available after a failed update.
+- Saving options reloads the entry, so a new interval applies straight away.
+- SIM cards added to the account appear without restarting Home Assistant.
+- Dropped a redundant fetch performed on every setup.
+- Entity names come from the translation files again, so the French names show.
+- Registry migration runs once through `async_migrate_entry` instead of on
+  every startup.
+- `hacs.json` no longer hides the repository from HACS country filters.
 
 ### 1.2.1
 - Reduced redundant BeautifulSoup parsing (normal path from 2 parses to 1, re-auth from 5 to 3).
@@ -179,6 +199,18 @@ Logs appear in **Settings > System > Logs** or in `home-assistant.log`.
 
 ### 1.1.1 and earlier
 - Initial release: async client, sensors, button, translations.
+
+---
+
+## Development
+
+```sh
+python -m venv venv && venv/bin/pip install aiohttp beautifulsoup4 pytest ruff
+venv/bin/python -m pytest tests
+venv/bin/ruff check custom_components && venv/bin/ruff format --check custom_components
+```
+
+The tests cover the page parsing, which needs no Home Assistant install.
 
 ---
 
