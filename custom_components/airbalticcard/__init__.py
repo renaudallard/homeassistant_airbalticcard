@@ -8,24 +8,21 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_PASSWORD, CONF_USERNAME
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
-from homeassistant.helpers.typing import ConfigType
 
 from .airbalticcard_api import AirBalticCardAPI
-from .const import DOMAIN, PLATFORMS
+from .const import PLATFORMS
 from .coordinator import AirBalticCardCoordinator
 from .migration import async_migrate_registries
 from .models import AirBalticCardRuntimeData
 
 _LOGGER = logging.getLogger(__name__)
 
-
-async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Set up the AirBalticCard integration (YAML not supported)."""
-    hass.data.setdefault(DOMAIN, {})
-    return True
+type AirBalticCardConfigEntry = ConfigEntry[AirBalticCardRuntimeData]
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_setup_entry(
+    hass: HomeAssistant, entry: AirBalticCardConfigEntry
+) -> bool:
     """Set up AirBalticCard from a config entry."""
     username: str = entry.data[CONF_USERNAME]
     password: str = entry.data[CONF_PASSWORD]
@@ -41,14 +38,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     # Blocking: wait for the first refresh before entity setup
     await coordinator.async_config_entry_first_refresh()
 
-    runtime_data = AirBalticCardRuntimeData(
+    entry.runtime_data = AirBalticCardRuntimeData(
         coordinator=coordinator,
         account_id=entry.entry_id,
         username=username,
     )
-
-    hass.data[DOMAIN][entry.entry_id] = runtime_data
-    entry.runtime_data = runtime_data
 
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
@@ -56,17 +50,16 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     return True
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_unload_entry(
+    hass: HomeAssistant, entry: AirBalticCardConfigEntry
+) -> bool:
     """Unload a config entry and clean up resources."""
-    unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
-
-    if unload_ok:
-        hass.data[DOMAIN].pop(entry.entry_id, None)
-
-    return unload_ok
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 
-async def async_migrate_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_migrate_entry(
+    hass: HomeAssistant, entry: AirBalticCardConfigEntry
+) -> bool:
     """Migrate an entry created by an older release."""
     if entry.version > 2:
         # Downgraded from a newer release; nothing sensible to do.

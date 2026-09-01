@@ -5,21 +5,20 @@ from homeassistant.core import callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 
-from .const import (
-    DOMAIN,
-    CONF_USERNAME,
-    CONF_PASSWORD,
-    CONF_SCAN_INTERVAL,
-    CONF_RETRY_INTERVAL,
-    DEFAULT_SCAN_INTERVAL,
-    DEFAULT_RETRY_INTERVAL,
-)
 from .airbalticcard_api import (
     AirBalticCardAPI,
     AirBalticCardAuthError,
     AirBalticCardConnectionError,
 )
-
+from .const import (
+    CONF_PASSWORD,
+    CONF_RETRY_INTERVAL,
+    CONF_SCAN_INTERVAL,
+    CONF_USERNAME,
+    DEFAULT_RETRY_INTERVAL,
+    DEFAULT_SCAN_INTERVAL,
+    DOMAIN,
+)
 
 DATA_SCHEMA = vol.Schema(
     {
