@@ -32,7 +32,7 @@
     "step": {
       "init": {
         "title": "Options AirBalticCard",
-        "description": "Configurez la fréquence de mise à jour et de nouvelle tentative (en secondes). Par défaut : 3600 secondes (1 heure).",
+        "description": "Configurez la fréquence de mise à jour et de nouvelle tentative (en secondes). Par défaut : 3600 secondes (1 heure). Toute modification recharge l’intégration.",
         "data": {
           "scan_interval": "Intervalle d’analyse (secondes)",
           "retry_interval": "Intervalle de nouvelle tentative (secondes)"

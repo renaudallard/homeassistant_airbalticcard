@@ -32,7 +32,7 @@
     "step": {
       "init": {
         "title": "AirBalticCard Options",
-        "description": "Configure how often to update and retry if errors occur (in seconds). Default is 3600 seconds (1 hour).",
+        "description": "Configure how often to update and retry if errors occur (in seconds). Default is 3600 seconds (1 hour). Changing these reloads the integration.",
         "data": {
           "scan_interval": "Scan interval (seconds)",
           "retry_interval": "Retry interval (seconds)"
