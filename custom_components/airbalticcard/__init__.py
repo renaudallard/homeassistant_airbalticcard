@@ -10,7 +10,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.aiohttp_client import async_create_clientsession
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
@@ -39,9 +39,11 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     username: str = entry.data["username"]
     password: str = entry.data["password"]
 
-    # Use HA’s shared aiohttp session
-    session = async_get_clientsession(hass)
-    api = AirBalticCardAPI(username, password, session=session)
+    # The portal authenticates with a cookie, so each entry needs a session of
+    # its own. The shared session would let two accounts overwrite each other.
+    # It is detached automatically when the entry unloads.
+    session = async_create_clientsession(hass)
+    api = AirBalticCardAPI(username, password, session)
 
     def _get_intervals(
         cfg_entry: ConfigEntry,
@@ -95,8 +97,6 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
     runtime_data = AirBalticCardRuntimeData(
         coordinator=coordinator,
-        api=api,
-        session=session,
         account_id=entry.entry_id,
         username=username,
     )
@@ -120,17 +120,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     """Unload a config entry and clean up resources."""
-    data: AirBalticCardRuntimeData | None = hass.data[DOMAIN].pop(entry.entry_id, None)
     unload_ok = await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
-    if data:
-        try:
-            await data.api.close()
-        except Exception as err:  # pragma: no cover - defensive safety net
-            _LOGGER.debug("Error closing AirBalticCard API session: %s", err)
-
     if unload_ok:
-        _LOGGER.info("AirBalticCard integration unloaded successfully")
+        hass.data[DOMAIN].pop(entry.entry_id, None)
 
     return unload_ok
 

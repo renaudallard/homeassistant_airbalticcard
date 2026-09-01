@@ -10,27 +10,18 @@ _TIMEOUT = aiohttp.ClientTimeout(total=15)
 
 
 class AirBalticCardAPI:
-    """Async API client for AirBalticCard."""
+    """Async API client for AirBalticCard.
+
+    The caller owns *session*: its cookie jar holds the portal login, so each
+    account needs a session of its own.
+    """
 
     def __init__(
-        self, username: str, password: str, session: aiohttp.ClientSession | None = None
-    ):
+        self, username: str, password: str, session: aiohttp.ClientSession
+    ) -> None:
         self._username = username
         self._password = password
         self._session = session
-        self._own_session = False
-
-    async def _get_session(self) -> aiohttp.ClientSession:
-        if self._session is None:
-            self._own_session = True
-            self._session = aiohttp.ClientSession(
-                headers={"User-Agent": "HomeAssistant-AirBalticCard/1.2.1"}
-            )
-        return self._session
-
-    async def close(self):
-        if self._own_session and self._session:
-            await self._session.close()
 
     @staticmethod
     def _extract_nonce_from_soup(soup: BeautifulSoup) -> str | None:
@@ -49,12 +40,10 @@ class AirBalticCardAPI:
         If *soup* is provided, the nonce is extracted from it directly
         instead of making an extra GET request.
         """
-        session = await self._get_session()
-
         nonce = self._extract_nonce_from_soup(soup) if soup else None
 
         if not nonce:
-            async with session.get(ACCOUNT_URL, timeout=_TIMEOUT) as resp:
+            async with self._session.get(ACCOUNT_URL, timeout=_TIMEOUT) as resp:
                 if resp.status != 200:
                     raise ConnectionError(
                         f"Login page unavailable (HTTP {resp.status})"
@@ -72,7 +61,7 @@ class AirBalticCardAPI:
             "login": "Log in",
         }
 
-        async with session.post(
+        async with self._session.post(
             ACCOUNT_URL,
             data=payload,
             allow_redirects=True,
@@ -123,8 +112,7 @@ class AirBalticCardAPI:
         return "logout" in html.lower()
 
     async def _fetch_dashboard(self) -> BeautifulSoup:
-        session = await self._get_session()
-        async with session.get(ACCOUNT_URL, timeout=_TIMEOUT) as resp:
+        async with self._session.get(ACCOUNT_URL, timeout=_TIMEOUT) as resp:
             text = await resp.text()
 
         soup = BeautifulSoup(text, "html.parser")

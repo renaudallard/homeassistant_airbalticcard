@@ -3,6 +3,7 @@ from homeassistant import config_entries
 from homeassistant.config_entries import OptionsFlowWithReload
 from homeassistant.core import callback
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.aiohttp_client import async_create_clientsession
 
 from .const import (
     DOMAIN,
@@ -62,16 +63,17 @@ class AirBalticCardConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     async def _async_validate_login(self, username, password):
         """Validate user credentials."""
-        api = AirBalticCardAPI(username, password)
+        session = async_create_clientsession(self.hass, auto_cleanup=False)
         try:
-            await api.login()
-            return True
-        except ValueError:
-            raise InvalidAuth
-        except ConnectionError:
-            raise CannotConnect
+            await AirBalticCardAPI(username, password, session).login()
+        except ValueError as err:
+            raise InvalidAuth from err
+        except ConnectionError as err:
+            raise CannotConnect from err
         finally:
-            await api.close()
+            # detach, not close: the connector is shared with the rest of HA.
+            session.detach()
+        return True
 
     @staticmethod
     @callback
