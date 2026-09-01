@@ -102,12 +102,8 @@ class AirBalticCardAccountSensor(
         self._attr_name = "Account Credit"
 
     @property
-    def native_value(self):
-        val = (self.coordinator.data or {}).get("account_credit")
-        try:
-            return float(val) if val is not None else None
-        except Exception:
-            return None
+    def native_value(self) -> float | None:
+        return (self.coordinator.data or {}).get("account_credit")
 
     @property
     def available(self):
@@ -150,22 +146,15 @@ class AirBalticCardTotalSimCreditSensor(
         self._attr_name = "Total SIM Credit"
 
     @property
-    def native_value(self):
-        data = self.coordinator.data or {}
-        sims = data.get("sims", [])
-        total = 0.0
-        for sim in sims:
-            try:
-                val = (
-                    (sim.get("credit", "") or "")
-                    .replace("€", "")
-                    .replace(",", ".")
-                    .strip()
-                )
-                total += float(val)
-            except Exception:
-                continue
-        return round(total, 2) if sims else None
+    def native_value(self) -> float | None:
+        balances = [
+            sim["credit"]
+            for sim in (self.coordinator.data or {}).get("sims", [])
+            if sim.get("credit") is not None
+        ]
+        if not balances:
+            return None
+        return round(sum(balances), 2)
 
     @property
     def available(self):
@@ -206,13 +195,6 @@ class AirBalticCardSimBalanceSensor(
         self._attr_unique_id = f"{DOMAIN}_{account_id}_{sim_number}_balance"
         self._attr_name = "Balance"
 
-    @staticmethod
-    def _parse_credit(text: str) -> float | None:
-        try:
-            return float(text.replace("€", "").replace(",", ".").strip())
-        except Exception:
-            return None
-
     def _find_sim(self) -> dict[str, Any] | None:
         data = self.coordinator.data or {}
         for sim in data.get("sims", []):
@@ -223,9 +205,7 @@ class AirBalticCardSimBalanceSensor(
     @property
     def native_value(self) -> float | None:
         sim = self._find_sim()
-        if not sim:
-            return None
-        return self._parse_credit(sim.get("credit", ""))
+        return sim.get("credit") if sim else None
 
     @property
     def icon(self) -> str:
@@ -241,7 +221,7 @@ class AirBalticCardSimBalanceSensor(
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         sim = self._find_sim() or {}
-        val = self._parse_credit(sim.get("credit", "") or "") if sim else None
+        val = sim.get("credit")
         effective = val if val is not None else 0
         severity = (
             "critical" if effective < 2 else "warning" if effective < 4 else "normal"

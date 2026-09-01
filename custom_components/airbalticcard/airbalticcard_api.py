@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 import aiohttp
@@ -12,6 +13,41 @@ _LOGGER = logging.getLogger(__name__)
 
 ACCOUNT_URL = "https://airbalticcard.com/my-account/"
 _TIMEOUT = aiohttp.ClientTimeout(total=15)
+
+# A leading digit followed by digits, group separators and a decimal separator.
+_AMOUNT_RE = re.compile(r"-?\d[\d\s\u00a0\u202f.,]*")
+_SPACE_RE = re.compile(r"[\s\u00a0\u202f]")
+
+
+def parse_amount(text: str) -> float | None:
+    """Return the amount contained in *text*, or None when there is none.
+
+    Accepts the symbol on either side and in either decimal convention, so
+    "EUR 1 234,56" and "$1,234.56"-style groupings both come out right. The
+    separator that appears last is the decimal one.
+    """
+    match = _AMOUNT_RE.search(text)
+    if not match:
+        return None
+
+    raw = _SPACE_RE.sub("", match.group())
+    if raw.rfind(",") > raw.rfind("."):
+        raw = raw.replace(".", "").replace(",", ".")
+    else:
+        raw = raw.replace(",", "")
+
+    try:
+        return float(raw)
+    except ValueError:
+        return None
+
+
+def _attr(tag: Any, name: str) -> str:
+    """Return a tag attribute as a plain stripped string."""
+    value = tag.get(name, "")
+    if isinstance(value, list):
+        value = value[0] if value else ""
+    return str(value).strip()
 
 
 class AirBalticCardAPI:
@@ -31,13 +67,10 @@ class AirBalticCardAPI:
     @staticmethod
     def _extract_nonce_from_soup(soup: BeautifulSoup) -> str | None:
         """Extract the WooCommerce login nonce from a parsed page."""
-        nonce_input = soup.find("input", {"name": "woocommerce-login-nonce"})
-        if not nonce_input:
+        field = soup.find("input", {"name": "woocommerce-login-nonce"})
+        if not field:
             return None
-        nonce = nonce_input.get("value", "")
-        if isinstance(nonce, list):
-            nonce = nonce[0] if nonce else ""
-        return str(nonce) if nonce else None
+        return _attr(field, "value") or None
 
     async def login(self, soup: BeautifulSoup | None = None) -> BeautifulSoup:
         """Perform login and return the parsed response page.
@@ -136,58 +169,68 @@ class AirBalticCardAPI:
     async def get_sim_cards(self) -> dict[str, Any]:
         """Fetch SIM cards and account-level credit."""
         soup = await self._fetch_dashboard()
+        sims = self._parse_sims(soup)
+        credit = self._parse_account_credit(soup)
 
-        result: dict[str, Any] = {"account_credit": None, "sims": []}
+        _LOGGER.debug("Parsed account credit %s and %d SIM card(s)", credit, len(sims))
+        return {"account_credit": credit, "sims": sims}
 
-        # --- Account-level credit ---
-        for account_block in soup.find_all("div", class_="sideTable_side"):
-            title = account_block.find("div", class_="sideTable_title")
-            if title and "available credit for account" in title.text.lower():
-                credit_el = account_block.find("div", class_="sideTable_text")
-                if credit_el:
-                    text = credit_el.get_text(strip=True)
-                    credit_val = (
-                        text.replace("€", "")
-                        .replace("EUR", "")
-                        .strip()
-                        .replace(",", ".")
-                    )
-                    result["account_credit"] = credit_val
-                    _LOGGER.debug("Account credit found: %s EUR", credit_val)
-                break
-
-        # --- SIM cards ---
-        rows = soup.find_all("tr")
-        for row in rows:
-            sim_container = row.find("div", class_="js-label-container")
-            if not sim_container:
+    @staticmethod
+    def _parse_account_credit(soup: BeautifulSoup) -> float | None:
+        """Return the account-level credit shown in the sidebar."""
+        for block in soup.find_all("div", class_="sideTable_side"):
+            title = block.find("div", class_="sideTable_title")
+            if not title:
+                continue
+            if "available credit for account" not in title.get_text().lower():
                 continue
 
-            raw_number = sim_container.get("data-number", "")
-            if isinstance(raw_number, list):
-                raw_number = raw_number[0] if raw_number else ""
-            sim_number = str(raw_number).strip()
-            label_el = sim_container.find("span", class_="js-sim-label-value")
-            sim_name = label_el.get_text(strip=True) if label_el else "Unnamed"
+            value = block.find("div", class_="sideTable_text")
+            if not value:
+                return None
 
-            sim_credit = None
-            for td in row.find_all("td"):
-                text = td.get_text(strip=True)
-                if text.startswith("€"):
-                    sim_credit = text.replace("€", "").replace(",", ".").strip()
+            text = value.get_text(strip=True)
+            credit = parse_amount(text)
+            if credit is None:
+                _LOGGER.warning("Could not read the account credit from %r", text)
+            return credit
+
+        return None
+
+    @staticmethod
+    def _parse_sims(soup: BeautifulSoup) -> list[dict[str, Any]]:
+        """Return one entry per SIM card listed on the account page."""
+        sims: list[dict[str, Any]] = []
+
+        for row in soup.find_all("tr"):
+            container = row.find("div", class_="js-label-container")
+            if not container:
+                continue
+
+            number = _attr(container, "data-number")
+            if not number:
+                continue
+
+            label = container.find("span", class_="js-sim-label-value")
+
+            credit = None
+            for cell in row.find_all("td"):
+                text = cell.get_text(strip=True)
+                if "€" not in text and "eur" not in text.lower():
+                    continue
+                credit = parse_amount(text)
+                if credit is not None:
                     break
 
-            result["sims"].append(
+            if credit is None:
+                _LOGGER.warning("No readable balance for SIM %s", number)
+
+            sims.append(
                 {
-                    "number": sim_number,
-                    "name": sim_name,
-                    "credit": sim_credit or "0.00",
+                    "number": number,
+                    "name": label.get_text(strip=True) if label else None,
+                    "credit": credit,
                 }
             )
 
-        _LOGGER.debug(
-            "Parsed account credit: %s, %d SIM cards",
-            result["account_credit"],
-            len(result["sims"]),
-        )
-        return result
+        return sims
