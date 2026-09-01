@@ -43,10 +43,12 @@ class AirBalticCardConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
 
         if user_input is not None:
-            username = user_input[CONF_USERNAME]
+            username = user_input[CONF_USERNAME].strip()
             password = user_input[CONF_PASSWORD]
 
-            await self.async_set_unique_id(username)
+            # The portal treats the login as case insensitive, so match on the
+            # lowercased form to keep one entry per account.
+            await self.async_set_unique_id(username.lower())
             self._abort_if_unique_id_configured()
 
             errors = await self._async_validate(username, password)
