@@ -47,29 +47,21 @@
   "entity": {
     "sensor": {
       "account_credit": {
-        "name": "Crédit du compte",
-        "device_class": "monetary",
-        "icon": "mdi:wallet"
+        "name": "Crédit du compte"
       },
       "total_sim_credit": {
-        "name": "Crédit total des SIM",
-        "device_class": "monetary",
-        "icon": "mdi:cash-multiple"
+        "name": "Crédit total des SIM"
       },
       "sim_balance": {
-        "name": "Solde de la carte SIM",
-        "device_class": "monetary",
-        "icon": "mdi:sim"
+        "name": "Solde de la carte SIM"
       },
       "sim_description": {
-        "name": "Description de la carte SIM",
-        "icon": "mdi:label"
+        "name": "Description de la carte SIM"
       }
     },
     "button": {
       "refresh": {
-        "name": "Rafraîchir manuellement",
-        "icon": "mdi:refresh"
+        "name": "Rafraîchir manuellement"
       }
     }
   }

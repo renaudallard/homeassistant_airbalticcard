@@ -47,29 +47,21 @@
   "entity": {
     "sensor": {
       "account_credit": {
-        "name": "Account Credit",
-        "device_class": "monetary",
-        "icon": "mdi:wallet"
+        "name": "Account Credit"
       },
       "total_sim_credit": {
-        "name": "Total SIM Credit",
-        "device_class": "monetary",
-        "icon": "mdi:cash-multiple"
+        "name": "Total SIM Credit"
       },
       "sim_balance": {
-        "name": "SIM Balance",
-        "device_class": "monetary",
-        "icon": "mdi:sim"
+        "name": "SIM Balance"
       },
       "sim_description": {
-        "name": "SIM Description",
-        "icon": "mdi:label"
+        "name": "SIM Description"
       }
     },
     "button": {
       "refresh": {
-        "name": "Manual Refresh",
-        "icon": "mdi:refresh"
+        "name": "Manual Refresh"
       }
     }
   }
