@@ -1,8 +1,9 @@
+import logging
+
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.config_entries import OptionsFlowWithReload
 from homeassistant.core import callback
-from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.aiohttp_client import async_create_clientsession
 
 from .airbalticcard_api import (
@@ -19,6 +20,8 @@ from .const import (
     DEFAULT_SCAN_INTERVAL,
     DOMAIN,
 )
+
+_LOGGER = logging.getLogger(__name__)
 
 DATA_SCHEMA = vol.Schema(
     {
@@ -46,22 +49,12 @@ class AirBalticCardConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             await self.async_set_unique_id(username)
             self._abort_if_unique_id_configured()
 
-            try:
-                await self._async_validate_login(username, password)
-
+            errors = await self._async_validate(username, password)
+            if not errors:
                 return self.async_create_entry(
                     title=f"AirBalticCard ({username})",
-                    data={
-                        CONF_USERNAME: username,
-                        CONF_PASSWORD: password,
-                    },
+                    data={CONF_USERNAME: username, CONF_PASSWORD: password},
                 )
-            except InvalidAuth:
-                errors["base"] = "invalid_auth"
-            except CannotConnect:
-                errors["base"] = "cannot_connect"
-            except Exception:
-                errors["base"] = "unknown"
 
         return self.async_show_form(
             step_id="user", data_schema=DATA_SCHEMA, errors=errors
@@ -78,15 +71,8 @@ class AirBalticCardConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             password = user_input[CONF_PASSWORD]
-            try:
-                await self._async_validate_login(entry.data[CONF_USERNAME], password)
-            except InvalidAuth:
-                errors["base"] = "invalid_auth"
-            except CannotConnect:
-                errors["base"] = "cannot_connect"
-            except Exception:
-                errors["base"] = "unknown"
-            else:
+            errors = await self._async_validate(entry.data[CONF_USERNAME], password)
+            if not errors:
                 return self.async_update_reload_and_abort(
                     entry, data_updates={CONF_PASSWORD: password}
                 )
@@ -98,19 +84,23 @@ class AirBalticCardConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             description_placeholders={CONF_USERNAME: entry.data[CONF_USERNAME]},
         )
 
-    async def _async_validate_login(self, username, password):
-        """Validate user credentials."""
+    async def _async_validate(self, username, password):
+        """Try to log in and return the form errors, empty when it worked."""
         session = async_create_clientsession(self.hass, auto_cleanup=False)
         try:
             await AirBalticCardAPI(username, password, session).login()
-        except AirBalticCardAuthError as err:
-            raise InvalidAuth from err
-        except AirBalticCardConnectionError as err:
-            raise CannotConnect from err
+        except AirBalticCardAuthError:
+            return {"base": "invalid_auth"}
+        except AirBalticCardConnectionError:
+            return {"base": "cannot_connect"}
+        except Exception:
+            _LOGGER.exception("Unexpected error while validating AirBalticCard login")
+            return {"base": "unknown"}
         finally:
             # detach, not close: the connector is shared with the rest of HA.
             session.detach()
-        return True
+
+        return {}
 
     @staticmethod
     @callback
@@ -154,11 +144,3 @@ class AirBalticCardOptionsFlow(OptionsFlowWithReload):
         )
 
         return self.async_show_form(step_id="init", data_schema=schema, errors=errors)
-
-
-class CannotConnect(HomeAssistantError):
-    """Error to indicate we cannot connect."""
-
-
-class InvalidAuth(HomeAssistantError):
-    """Error to indicate invalid authentication."""
