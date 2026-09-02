@@ -20,6 +20,22 @@ from .const import ACCOUNT_MODEL, DOMAIN, MANUFACTURER, SIM_MODEL
 _LOGGER = logging.getLogger(__name__)
 
 
+def _device_with(
+    device_registry: dr.DeviceRegistry, entry: ConfigEntry, identifier: tuple[str, str]
+) -> dr.DeviceEntry | None:
+    """Return this entry's device carrying *identifier*, if it has one.
+
+    async_get_device searches every config entry, which is both ambiguous when
+    two accounts share a legacy identifier and deprecated for that reason
+    (removal in Home Assistant 2027.8). Scoping the search to the entry is
+    what this migration wanted all along.
+    """
+    for device in dr.async_entries_for_config_entry(device_registry, entry.entry_id):
+        if identifier in device.identifiers:
+            return device
+    return None
+
+
 def async_migrate_registries(
     hass: HomeAssistant, entry: ConfigEntry, username: str
 ) -> None:
@@ -67,15 +83,12 @@ def _migrate_devices(hass: HomeAssistant, entry: ConfigEntry, username: str) -> 
     account_identifier_old = (DOMAIN, "airbalticcard_account")
     account_identifier_new = (DOMAIN, f"{account_id}_account")
 
-    account_device = device_registry.async_get_device({account_identifier_new})
-    legacy_account_device = device_registry.async_get_device({account_identifier_old})
+    account_device = _device_with(device_registry, entry, account_identifier_new)
+    legacy_account_device = _device_with(device_registry, entry, account_identifier_old)
     migrated = 0
 
     if account_device is None:
-        if (
-            legacy_account_device
-            and entry.entry_id in legacy_account_device.config_entries
-        ):
+        if legacy_account_device:
             device_registry.async_update_device(
                 legacy_account_device.id,
                 new_identifiers={account_identifier_new},
@@ -94,11 +107,7 @@ def _migrate_devices(hass: HomeAssistant, entry: ConfigEntry, username: str) -> 
             model=ACCOUNT_MODEL,
         )
 
-        if (
-            legacy_account_device
-            and legacy_account_device.id != account_device.id
-            and entry.entry_id in legacy_account_device.config_entries
-        ):
+        if legacy_account_device and legacy_account_device.id != account_device.id:
             # The legacy device still exists alongside the migrated one. Remove
             # it once all entities have been pointed at the new identifiers.
             if not _has_entities(entity_registry, entry, legacy_account_device.id):
@@ -175,7 +184,7 @@ def _migrate_devices(hass: HomeAssistant, entry: ConfigEntry, username: str) -> 
         if account_device_id and device_entry.via_device_id != account_device_id:
             update_kwargs["via_device_id"] = account_device_id
 
-        existing_device = device_registry.async_get_device({new_identifier})
+        existing_device = _device_with(device_registry, entry, new_identifier)
 
         if existing_device and existing_device.id != device_entry.id:
             # Entities referencing the legacy SIM device must be reassigned to
