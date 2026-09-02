@@ -1,71 +1,82 @@
 name: Release on manifest version change
 
+# Runs only after Validate has passed for the same commit, so a red build
+# cannot be published to HACS users.
 on:
-  push:
+  workflow_run:
+    workflows: ["Validate"]
+    types: [completed]
     branches: [ main, master ]
-    paths:
-      - "custom_components/airbalticcard/manifest.json"
 
 permissions:
   contents: write
 
 jobs:
   release:
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout
+      - name: Checkout the commit that was validated
         uses: actions/checkout@v4
         with:
+          ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
 
-      - name: Read version from manifest
+      - name: Decide whether to release
         id: ver
-        run: |
-          set -eu
-          MANIFEST=custom_components/airbalticcard/manifest.json
-          VERSION=$(jq -r '.version' "$MANIFEST")
-          if [ -z "$VERSION" ] || [ "$VERSION" = "null" ]; then
-            echo "Manifest version missing"; exit 1
-          fi
-
-          PREVIOUS=$(git show "${{ github.event.before }}:$MANIFEST" 2>/dev/null \
-            | jq -r '.version' || echo "")
-          if [ "$VERSION" = "$PREVIOUS" ]; then
-            echo "Version unchanged at $VERSION, nothing to release"
-            echo "changed=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "changed=true" >> "$GITHUB_OUTPUT"
-          fi
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-
-      - name: Refuse to overwrite an existing release
-        if: steps.ver.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -eu
-          if gh release view "v${{ steps.ver.outputs.version }}" >/dev/null 2>&1; then
-            echo "Release v${{ steps.ver.outputs.version }} already exists; bump the version first"
+          VERSION=$(jq -er '.version' custom_components/airbalticcard/manifest.json)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          # The highest version already published, not merely the most recent:
+          # HACS offers the newest release, so publishing an older one would
+          # hand users an older tree.
+          HIGHEST=$(gh release list --limit 100 --exclude-drafts --exclude-pre-releases \
+            --json tagName -q '.[].tagName' | sed 's/^v//' | sort -V | tail -1)
+
+          if [ -z "$HIGHEST" ]; then
+            echo "No release yet; publishing $VERSION"
+            echo "release=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$VERSION" = "$HIGHEST" ]; then
+            echo "Version unchanged at $VERSION, nothing to release"
+            echo "release=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [ "$(printf '%s\n%s\n' "$VERSION" "$HIGHEST" | sort -V | tail -1)" != "$VERSION" ]; then
+            echo "Manifest version $VERSION is older than the published $HIGHEST"
             exit 1
           fi
 
+          echo "Publishing $VERSION (was $HIGHEST)"
+          echo "release=true" >> "$GITHUB_OUTPUT"
+
       - name: Build release zip
-        if: steps.ver.outputs.changed == 'true'
+        if: steps.ver.outputs.release == 'true'
         run: |
           set -eu
-          ZIP="airbalticcard-v${{ steps.ver.outputs.version }}.zip"
           mkdir -p dist
-          zip -r "dist/${ZIP}" \
+          zip -r "dist/airbalticcard-v${{ steps.ver.outputs.version }}.zip" \
             custom_components/airbalticcard \
             hacs.json \
+            LICENSE \
             README.md \
             -x "*/__pycache__/*" "*/.mypy_cache/*" "*/.pytest_cache/*" "*.pyc" "*.pyo"
 
       - name: Create release
-        if: steps.ver.outputs.changed == 'true'
+        if: steps.ver.outputs.release == 'true'
         uses: ncipollo/release-action@v1
         with:
           tag: v${{ steps.ver.outputs.version }}
+          commit: ${{ github.event.workflow_run.head_sha }}
           name: v${{ steps.ver.outputs.version }}
           allowUpdates: false
           makeLatest: true
