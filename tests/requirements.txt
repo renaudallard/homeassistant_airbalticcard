@@ -1,0 +1,7 @@
+# The parsing tests need only these.
+aiohttp
+beautifulsoup4
+pytest
+# tests/test_integration.py additionally needs a real Home Assistant.
+# Pick the release matching the Home Assistant you are targeting.
+pytest-homeassistant-custom-component

@@ -218,12 +218,16 @@ Logs appear in **Settings > System > Logs** or in `home-assistant.log`.
 ## Development
 
 ```sh
-python -m venv venv && venv/bin/pip install aiohttp beautifulsoup4 pytest ruff
-venv/bin/python -m pytest tests
-venv/bin/ruff check custom_components && venv/bin/ruff format --check custom_components
+python -m venv venv && venv/bin/pip install -r tests/requirements.txt ruff
+venv/bin/python -m pytest tests -c tests/pytest.ini
+venv/bin/ruff check custom_components tests
+venv/bin/ruff format --check custom_components tests
 ```
 
-The tests cover the page parsing, which needs no Home Assistant install.
+`tests/test_api_parsing.py` covers the page parsing and needs no Home
+Assistant; `tests/test_integration.py` drives a real one and skips itself when
+`pytest-homeassistant-custom-component` is not installed. Keep the venv out of
+the repo root or add it to `.gitignore`.
 
 ---
 

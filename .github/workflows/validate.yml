@@ -45,4 +45,17 @@ jobs:
         with:
           python-version: "3.13"
       - run: pip install aiohttp beautifulsoup4 pytest
-      - run: python -m pytest tests -q
+      - name: Parsing tests, without Home Assistant
+        run: python -m pytest tests -q
+
+  integration-tests:
+    name: integration tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install -r tests/requirements.txt
+      - name: Full suite against a real Home Assistant
+        run: python -m pytest tests -q -c tests/pytest.ini
