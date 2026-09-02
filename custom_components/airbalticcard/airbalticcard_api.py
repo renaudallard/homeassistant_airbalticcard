@@ -139,6 +139,8 @@ class AirBalticCardAPI:
             raise AirBalticCardConnectionError(
                 f"Login request failed: {_describe(err)}"
             ) from err
+        except RuntimeError as err:
+            raise self._closed_session_error(err) from err
 
         page, logged_in = await self._read(text)
         if logged_in:
@@ -167,6 +169,17 @@ class AirBalticCardAPI:
 
         _LOGGER.debug("Session expired, logging in again")
         return await self.login(soup=page)
+
+    def _closed_session_error(self, err: RuntimeError) -> BaseException:
+        """Turn "Session is closed" into our own error, and nothing else.
+
+        aiohttp raises a bare RuntimeError once the session has been detached,
+        which Home Assistant does as the entry unloads. A request already in
+        flight would otherwise escape this module's error hierarchy.
+        """
+        if not self._session.closed:
+            return err
+        return AirBalticCardConnectionError("The session was closed mid-request")
 
     async def _read(self, text: str) -> tuple[BeautifulSoup, bool]:
         """Parse a page and say whether it shows a session, off this thread."""
@@ -199,6 +212,8 @@ class AirBalticCardAPI:
             raise AirBalticCardConnectionError(
                 f"Request failed: {_describe(err)}"
             ) from err
+        except RuntimeError as err:
+            raise self._closed_session_error(err) from err
 
         return text
 

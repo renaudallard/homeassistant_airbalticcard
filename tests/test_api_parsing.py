@@ -3,6 +3,7 @@
 import asyncio
 from unittest.mock import AsyncMock, MagicMock
 
+import aiohttp
 import pytest
 from airbalticcard_api import (
     AirBalticCardAPI,
@@ -281,3 +282,27 @@ def test_parsing_goes_through_the_supplied_runner():
 
     assert data["account_credit"] == 125.0
     assert calls == ["_parse_and_check", "_extract"]
+
+
+def test_a_closed_session_is_reported_as_a_connection_failure():
+    """Home Assistant detaches the session on unload; a request in flight
+    then hits a bare RuntimeError that must not escape this module."""
+
+    async def attempt():
+        session = aiohttp.ClientSession()
+        session.detach()
+        client = AirBalticCardAPI("user", "secret", session)
+        with pytest.raises(AirBalticCardConnectionError):
+            await client.get_sim_cards()
+
+    asyncio.run(attempt())
+
+
+def test_an_unrelated_runtime_error_is_not_swallowed():
+    """Only a closed session is translated; other bugs still surface."""
+    session = MagicMock()
+    session.closed = False
+    session.get = MagicMock(side_effect=RuntimeError("something else"))
+    client = AirBalticCardAPI("user", "secret", session)
+    with pytest.raises(RuntimeError, match="something else"):
+        asyncio.run(client.get_sim_cards())
