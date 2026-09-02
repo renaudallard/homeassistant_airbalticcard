@@ -25,6 +25,7 @@
     },
     "abort": {
       "already_configured": "Ce compte est déjà configuré.",
+      "already_in_progress": "Une autre fenêtre configure déjà ce compte. Terminez-la ou fermez-la.",
       "reauth_successful": "Reconnexion à AirBalticCard réussie."
     }
   },

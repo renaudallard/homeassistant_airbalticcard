@@ -25,6 +25,7 @@
     },
     "abort": {
       "already_configured": "This account is already configured.",
+      "already_in_progress": "Another dialog is already setting up this account. Finish or close it first.",
       "reauth_successful": "Reconnected to AirBalticCard."
     }
   },
