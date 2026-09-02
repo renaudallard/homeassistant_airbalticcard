@@ -22,9 +22,11 @@ _AMOUNT_RE = re.compile(r"-?\d[\d\s\u00a0\u202f.,]*")
 _SPACE_RE = re.compile(r"[\s\u00a0\u202f]")
 # A balance cell is an amount and a currency marker and nothing else, so a
 # tariff such as "€0.09/min" or a label such as "Europe 5 countries" is
-# not mistaken for one.
+# not mistaken for one. The portal writes the account credit with a marker on
+# each side, as in "€70.00 EUR", so a trailing one is allowed after a
+# leading one.
 _CREDIT_RE = re.compile(
-    r"^(?:€|EUR)\s*-?[\d\s\u00a0\u202f.,]+$"
+    r"^(?:€|EUR)\s*-?[\d\s\u00a0\u202f.,]+(?:\s*(?:€|EUR))?$"
     r"|^-?[\d\s\u00a0\u202f.,]+\s*(?:€|EUR)$",
     re.IGNORECASE,
 )

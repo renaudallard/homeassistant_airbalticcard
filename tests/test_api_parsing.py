@@ -146,6 +146,24 @@ def test_account_credit_is_found_in_the_matching_block():
 
 
 @pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("\u20ac70.00 EUR", 70.0),
+        ("\u20ac 1 234,56 EUR", 1234.56),
+        ("EUR 70.00 \u20ac", 70.0),
+    ],
+)
+def test_account_credit_with_a_currency_on_both_sides(text, expected):
+    """The portal prints the account credit as "\u20ac70.00 EUR"."""
+    page = soup(
+        '<div class="sideTable_side">'
+        '<div class="sideTable_title">Available credit for account</div>'
+        f'<div class="sideTable_text">{text}</div></div>'
+    )
+    assert AirBalticCardAPI._parse_account_credit(page) == expected
+
+
+@pytest.mark.parametrize(
     "text",
     [
         "as of 31.12.2026, \u20ac 125,00",
