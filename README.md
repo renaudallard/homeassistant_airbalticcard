@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.3.0-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-1.3.1-blue" alt="Version">
   <img src="https://img.shields.io/badge/HA-2025.10%2B-41BDF5" alt="Home Assistant">
   <img src="https://img.shields.io/badge/Python-3.13%2B-3776AB" alt="Python">
   <img src="https://img.shields.io/badge/IoT%20class-cloud__polling-yellow" alt="IoT class">
@@ -157,7 +157,7 @@ Logs appear in **Settings > System > Logs** or in `home-assistant.log`.
 
 ## Changelog
 
-### Unreleased
+### 1.3.1
 - Deleting a device no longer errors when the integration is not loaded; the
   action was offered but crashed on the missing runtime data.
 - Entries upgraded from 1.2.x get their unique ID normalised, so the account
