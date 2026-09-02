@@ -248,7 +248,8 @@ Logs appear in **Settings > System > Logs** or in `home-assistant.log`.
 
 ```sh
 python -m venv venv && venv/bin/pip install -r tests/requirements.txt ruff
-venv/bin/python -m pytest tests -c tests/pytest.ini
+venv/bin/python -m pytest tests                        # parsing
+venv/bin/python -m pytest tests/test_integration.py -c tests/pytest.ini
 venv/bin/ruff check custom_components tests
 venv/bin/ruff format --check custom_components tests
 ```

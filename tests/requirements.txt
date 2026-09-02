@@ -1,7 +1,11 @@
-# The parsing tests need only these.
+# tests/test_api_parsing.py needs only these three and runs without Home
+# Assistant, which is why the parsing lives in a module of its own.
 aiohttp
 beautifulsoup4
 pytest
-# tests/test_integration.py additionally needs a real Home Assistant.
-# Pick the release matching the Home Assistant you are targeting.
-pytest-homeassistant-custom-component
+
+# tests/test_integration.py drives a real Home Assistant and skips itself when
+# this is missing. The harness pins the Home Assistant release it was built
+# against, so pin the harness too: resolving it freely picks up whatever is
+# newest, including prereleases its own fixtures do not work with.
+pytest-homeassistant-custom-component==0.13.357
