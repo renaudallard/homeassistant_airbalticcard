@@ -134,6 +134,25 @@ def test_account_credit_is_found_in_the_matching_block():
     assert AirBalticCardAPI._parse_account_credit(page) == 125.0
 
 
+@pytest.mark.parametrize(
+    "text",
+    [
+        "as of 31.12.2026, \u20ac 125,00",
+        "12 months left, \u20ac 125,00",
+        "SIM-12345 credit 5,00 \u20ac",
+        "no credit on file",
+    ],
+)
+def test_account_credit_with_extra_text_is_unknown(text):
+    """A block holding more than an amount must not yield a number."""
+    page = soup(
+        '<div class="sideTable_side">'
+        '<div class="sideTable_title">Available credit for account</div>'
+        f'<div class="sideTable_text">{text}</div></div>'
+    )
+    assert AirBalticCardAPI._parse_account_credit(page) is None
+
+
 def test_account_credit_is_none_when_absent():
     """No matching block means no account credit."""
     page = soup('<div class="sideTable_side"></div>')

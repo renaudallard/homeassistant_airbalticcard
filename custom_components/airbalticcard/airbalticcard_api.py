@@ -221,7 +221,10 @@ class AirBalticCardAPI:
                 return None
 
             text = value.get_text(strip=True)
-            credit = parse_amount(text)
+            # Same gate as the SIM balances: anything but an amount and a
+            # currency marker would otherwise yield the first digit run on the
+            # line, which reads as a real figure.
+            credit = parse_amount(text) if _CREDIT_RE.match(text) else None
             if credit is None:
                 _LOGGER.warning("Could not read the account credit from %r", text)
             return credit
