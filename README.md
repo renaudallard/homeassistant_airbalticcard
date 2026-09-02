@@ -142,7 +142,9 @@ Logs appear in **Settings > System > Logs** or in `home-assistant.log`.
 
 ## Privacy & Security
 
-- Credentials are stored in Home Assistant's encrypted config entries.
+- Your password is stored in Home Assistant's config entries, which are plain
+  JSON under `.storage/`. Anyone who can read your config directory or an
+  unencrypted backup can read it, so treat those accordingly.
 - Data is only exchanged with **airbalticcard.com**.
 - Each account uses its own `aiohttp` session, so logins never mix between accounts.
 
