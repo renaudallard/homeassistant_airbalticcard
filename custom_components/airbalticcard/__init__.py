@@ -71,10 +71,17 @@ async def async_remove_config_entry_device(
     hass: HomeAssistant, entry: AirBalticCardConfigEntry, device: dr.DeviceEntry
 ) -> bool:
     """Allow deleting a SIM device that is no longer on the account."""
+    runtime: AirBalticCardRuntimeData | None = getattr(entry, "runtime_data", None)
+    if runtime is None:
+        # Home Assistant drops runtime_data on unload and never sets it when
+        # setup failed, yet it keeps offering the delete action. Nothing is
+        # polling the account, so there is no list to check against.
+        return True
+
     account_id = entry.entry_id
     live = {(DOMAIN, f"{account_id}_account")} | {
         (DOMAIN, f"{account_id}_{sim['number']}")
-        for sim in entry.runtime_data.coordinator.data.get("sims", [])
+        for sim in runtime.coordinator.data.get("sims", [])
         if sim.get("number")
     }
     return not device.identifiers & live
