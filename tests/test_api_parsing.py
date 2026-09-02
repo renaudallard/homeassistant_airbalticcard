@@ -51,9 +51,19 @@ def test_logged_out_page_with_a_logout_link_in_the_menu():
 
 
 def test_error_banner_means_logged_out():
-    """A WooCommerce error banner means the login was rejected."""
-    page = soup('<ul class="woocommerce-error"><li>Wrong password</li></ul>')
+    """An error banner outweighs the account content on the same page."""
+    page = soup(
+        '<ul class="woocommerce-error"><li>Wrong password</li></ul>'
+        '<a href="/my-account/?customer-logout=true">Log out</a>'
+        '<div class="sideTable_side"></div>'
+    )
     assert AirBalticCardAPI._is_logged_in(page) is False
+
+
+def test_logout_link_text_alone_proves_the_session():
+    """The anchor text is checked, not just the href."""
+    page = soup('<a href="/account/exit">Logout</a>')
+    assert AirBalticCardAPI._is_logged_in(page) is True
 
 
 def test_logout_mention_in_a_script_is_not_a_session():
@@ -219,10 +229,25 @@ def test_refused_credentials_raise_an_auth_error():
 
 
 def test_a_login_that_fails_for_another_reason_is_a_connection_error():
-    """Without the form the failure is not about the credentials."""
-    client = api_returning('<ul class="woocommerce-error"><li>Maintenance</li></ul>')
+    """A POST answer with no login form failed for some other reason.
+
+    The GET must carry the form, or login() stops at the missing-nonce guard
+    and never reaches the branch this guards.
+    """
+    client = api_returning(LOGIN_FORM, "<p>Down for maintenance</p>")
     with pytest.raises(AirBalticCardConnectionError):
         asyncio.run(client.login())
+
+
+def test_a_refused_login_is_told_apart_from_an_unusable_page():
+    """The two post-POST outcomes must not collapse into one."""
+    refused = api_returning(LOGIN_FORM, LOGIN_FORM + "<p>Wrong password</p>")
+    with pytest.raises(AirBalticCardAuthError):
+        asyncio.run(refused.login())
+
+    unusable = api_returning(LOGIN_FORM, "<p>502 Bad Gateway</p>")
+    with pytest.raises(AirBalticCardConnectionError):
+        asyncio.run(unusable.login())
 
 
 def test_a_successful_login_returns_the_session_page():
