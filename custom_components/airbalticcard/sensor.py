@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 
+from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
 from homeassistant.components.sensor import (
     SensorDeviceClass,
     SensorEntity,
@@ -11,6 +12,7 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.const import CURRENCY_EURO
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 
 from .const import BALANCE_CRITICAL, BALANCE_WARNING, DOMAIN
@@ -29,17 +31,32 @@ async def async_setup_entry(
     """Set up the account sensors and follow the SIM cards as they appear."""
     runtime = entry.runtime_data
     coordinator = runtime.coordinator
-    known: set[str] = set()
+    registry = er.async_get(hass)
+    # SIMs handed to async_add_entities but not registered yet. The registry
+    # is the record of what exists; this only covers the gap until it catches
+    # up, so a deleted SIM device does not leave its number blacklisted.
+    pending: set[str] = set()
+
+    def _registered(number: str) -> bool:
+        """Tell whether this SIM's balance sensor is in the entity registry."""
+        return (
+            registry.async_get_entity_id(
+                SENSOR_DOMAIN, DOMAIN, f"{DOMAIN}_{runtime.account_id}_{number}_balance"
+            )
+            is not None
+        )
 
     @callback
     def _add_new_sims() -> None:
         """Add sensors for SIM cards that have no entities yet."""
+        pending.difference_update({number for number in pending if _registered(number)})
+
         entities: list[SensorEntity] = []
         for sim in coordinator.data.get("sims", []):
             number = sim.get("number")
-            if not number or number in known:
+            if not number or number in pending or _registered(number):
                 continue
-            known.add(number)
+            pending.add(number)
             entities.append(
                 AirBalticCardSimBalanceSensor(coordinator, runtime.account_id, number)
             )
