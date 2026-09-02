@@ -10,7 +10,7 @@
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.3.1-blue" alt="Version">
+  <img src="https://img.shields.io/badge/version-1.3.2-blue" alt="Version">
   <img src="https://img.shields.io/badge/HA-2025.10%2B-41BDF5" alt="Home Assistant">
   <img src="https://img.shields.io/badge/Python-3.13%2B-3776AB" alt="Python">
   <img src="https://img.shields.io/badge/IoT%20class-cloud__polling-yellow" alt="IoT class">
@@ -156,6 +156,15 @@ Logs appear in **Settings > System > Logs** or in `home-assistant.log`.
 ---
 
 ## Changelog
+
+### 1.3.2
+- The SIM sensors no longer read unavailable after a restart. Since 1.3.1 they
+  were only created when the entity registry did not already know them, which
+  is true exactly once, so every later start restored the registry entries
+  with no entity behind them.
+- The account credit is read again on pages that print a currency marker on
+  both sides of the amount, as in "€70.00 EUR", which is what the portal
+  sends.
 
 ### 1.3.1
 - Deleting a device no longer errors when the integration is not loaded; the
