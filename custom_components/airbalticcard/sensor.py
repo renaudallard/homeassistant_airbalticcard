@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from functools import partial
 from typing import TYPE_CHECKING, Any
 
 from homeassistant.components.sensor import DOMAIN as SENSOR_DOMAIN
@@ -32,39 +33,38 @@ async def async_setup_entry(
     runtime = entry.runtime_data
     coordinator = runtime.coordinator
     registry = er.async_get(hass)
-    # SIMs handed to async_add_entities but not registered yet. The registry
-    # is the record of what exists; this only covers the gap until it catches
-    # up, so a deleted SIM device does not leave its number blacklisted.
-    pending: set[str] = set()
+    # SIMs that already have sensors on this platform. Each sensor releases
+    # its number on the way out, so a SIM whose device was deleted is served
+    # again if it returns. Disabling a sensor removes it too but keeps its
+    # registry entry, which is what tells the two cases apart.
+    known: set[str] = set()
 
-    def _registered(number: str) -> bool:
-        """Tell whether this SIM's balance sensor is in the entity registry."""
-        return (
-            registry.async_get_entity_id(
-                SENSOR_DOMAIN, DOMAIN, f"{DOMAIN}_{runtime.account_id}_{number}_balance"
-            )
-            is not None
-        )
+    @callback
+    def _forget(number: str) -> None:
+        """Release a SIM number once its registry entry is gone as well."""
+        if not registry.async_get_entity_id(
+            SENSOR_DOMAIN, DOMAIN, f"{DOMAIN}_{runtime.account_id}_{number}_balance"
+        ):
+            known.discard(number)
 
     @callback
     def _add_new_sims() -> None:
         """Add sensors for SIM cards that have no entities yet."""
-        pending.difference_update({number for number in pending if _registered(number)})
-
         entities: list[SensorEntity] = []
         for sim in coordinator.data.get("sims", []):
             number = sim.get("number")
-            if not number or number in pending or _registered(number):
+            if not number or number in known:
                 continue
-            pending.add(number)
-            entities.append(
-                AirBalticCardSimBalanceSensor(coordinator, runtime.account_id, number)
-            )
-            entities.append(
+            known.add(number)
+            forget = partial(_forget, number)
+            for sensor in (
+                AirBalticCardSimBalanceSensor(coordinator, runtime.account_id, number),
                 AirBalticCardSimDescriptionSensor(
                     coordinator, runtime.account_id, number
-                )
-            )
+                ),
+            ):
+                sensor.async_on_remove(forget)
+                entities.append(sensor)
         if entities:
             async_add_entities(entities)
 

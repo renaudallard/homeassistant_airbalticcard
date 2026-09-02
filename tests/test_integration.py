@@ -158,6 +158,63 @@ async def test_sim_returns_after_its_device_was_deleted(hass, monkeypatch):
     assert sim_entities() == before
 
 
+async def test_the_sensors_come_back_after_a_reload(hass, monkeypatch):
+    """A restart finds the entities in the registry; they must still be built.
+
+    Skipping the SIMs already on record left Home Assistant restoring registry
+    entries with no entity behind them, so every SIM sensor read unavailable
+    from the second start onwards.
+    """
+    entry = await add_entry(
+        hass, monkeypatch, {"v": payload("111", "222")}, version=2, unique_id="u"
+    )
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    entity_registry = er.async_get(hass)
+    entities = [
+        entry_.entity_id
+        for entry_ in er.async_entries_for_config_entry(entity_registry, entry.entry_id)
+    ]
+    assert entities
+
+    assert await hass.config_entries.async_reload(entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert [
+        entity_id
+        for entity_id in entities
+        if hass.states.get(entity_id).state == "unavailable"
+    ] == []
+
+
+async def test_disabling_one_sensor_does_not_re_add_the_other(
+    hass, monkeypatch, caplog
+):
+    """Disabling removes the entity but keeps its registry entry.
+
+    The SIM must stay on record, or the next poll builds a second copy of the
+    sensor left enabled and Home Assistant rejects it as a duplicate.
+    """
+    entry = await add_entry(
+        hass, monkeypatch, {"v": payload("111")}, version=2, unique_id="u"
+    )
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    entity_registry = er.async_get(hass)
+    entity_registry.async_update_entity(
+        "sensor.sim_111_description", disabled_by=er.RegistryEntryDisabler.USER
+    )
+    await hass.async_block_till_done()
+
+    await entry.runtime_data.coordinator.async_refresh()
+    await hass.async_block_till_done()
+
+    assert "does not generate unique IDs" not in caplog.text
+    assert hass.states.get("sensor.sim_111_balance").state == "2.5"
+
+
 async def test_a_live_sim_device_cannot_be_deleted(hass, monkeypatch):
     """The account device and SIMs still on the account are protected."""
     entry = await add_entry(
