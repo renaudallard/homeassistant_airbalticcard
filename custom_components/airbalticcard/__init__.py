@@ -61,7 +61,14 @@ async def async_migrate_entry(
     """Migrate an entry created by an older release."""
     if entry.version == 1:
         async_migrate_registries(hass, entry, entry.data[CONF_USERNAME])
-        hass.config_entries.async_update_entry(entry, version=2)
+        # Entries created before 1.3.0 keyed on the login exactly as typed.
+        # The duplicate check now matches on the lowercased form, so an entry
+        # left as typed would no longer recognise its own account.
+        hass.config_entries.async_update_entry(
+            entry,
+            unique_id=entry.data[CONF_USERNAME].strip().lower(),
+            version=2,
+        )
         _LOGGER.debug("Migrated AirBalticCard entry %s to version 2", entry.entry_id)
 
     return True
