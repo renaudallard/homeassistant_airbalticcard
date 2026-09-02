@@ -79,16 +79,20 @@ Saving options reloads the integration, so a new interval applies straight away.
 
 ## Entities
 
-> Entity IDs depend on your system's naming. Examples below show typical patterns.
+> Entity IDs are built from the device name, so the account ones carry your login.
 
 ### Sensors
 
 | Entity | Type | Device |
 |--------|------|--------|
-| `sensor.airbalticcard_account_credit` | Monetary (EUR) | Account |
-| `sensor.airbalticcard_total_sim_credit` | Monetary (EUR) | Account |
+| `sensor.airbalticcard_account_<login>_account_credit` | Monetary (EUR) | Account |
+| `sensor.airbalticcard_account_<login>_total_sim_credit` | Monetary (EUR) | Account |
 | `sensor.sim_<number>_balance` | Monetary (EUR) | SIM |
 | `sensor.sim_<number>_description` | Text | SIM |
+
+`<login>` is your username slugified, because the account device is named
+after it. Check the real IDs under **Settings > Devices & Services >
+Entities** rather than typing them from here.
 
 Per-SIM balance sensors include extra attributes: `sim_number`, `sim_name`, `balance_state`.
 
@@ -98,7 +102,7 @@ Each SIM is registered as its own device linked to the parent account device.
 
 | Entity | Category | Description |
 |--------|----------|-------------|
-| `button.airbalticcard_refresh` | Diagnostic | Triggers an immediate data fetch |
+| `button.airbalticcard_account_<login>_manual_refresh` | Diagnostic | Triggers an immediate data fetch |
 
 ---
 
@@ -108,9 +112,10 @@ Each SIM is registered as its own device linked to the parent account device.
 type: entities
 title: AirBalticCard
 entities:
-  - sensor.airbalticcard_account_credit
-  - sensor.airbalticcard_total_sim_credit
-  - button.airbalticcard_refresh
+  # Replace these with the IDs your install actually registered.
+  - sensor.airbalticcard_account_john_example_com_account_credit
+  - sensor.airbalticcard_account_john_example_com_total_sim_credit
+  - button.airbalticcard_account_john_example_com_manual_refresh
   - sensor.sim_3712xxxxxxx_balance
   - sensor.sim_3712xxxxxxx_description
 ```
