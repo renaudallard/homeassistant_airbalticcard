@@ -31,7 +31,14 @@ async def async_setup_entry(
     # its own. The shared session would let two accounts overwrite each other.
     # It is detached automatically when the entry unloads.
     session = async_create_clientsession(hass)
-    api = AirBalticCardAPI(username, entry.data[CONF_PASSWORD], session)
+    # Parsing an account page blocks for a few hundred milliseconds, which is
+    # far too long to hold the event loop, so it runs in the thread pool.
+    api = AirBalticCardAPI(
+        username,
+        entry.data[CONF_PASSWORD],
+        session,
+        hass.async_add_executor_job,
+    )
 
     coordinator = AirBalticCardCoordinator(hass, entry, api)
     await coordinator.async_config_entry_first_refresh()

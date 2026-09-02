@@ -188,7 +188,7 @@ def test_the_balance_wins_over_an_earlier_tariff_cell():
     assert AirBalticCardAPI._parse_sims(page)[0]["credit"] == 12.34
 
 
-def api_returning(get_html, post_html=None):
+def api_returning(get_html, post_html=None, run=None):
     """Build a client answering GET with *get_html* and POST with *post_html*."""
 
     def responder(html):
@@ -203,7 +203,7 @@ def api_returning(get_html, post_html=None):
     session = MagicMock()
     session.get = responder(get_html)
     session.post = responder(get_html if post_html is None else post_html)
-    return AirBalticCardAPI("user", "secret", session)
+    return AirBalticCardAPI("user", "secret", session, run)
 
 
 LOGIN_FORM = '<input name="woocommerce-login-nonce" value="nonce">'
@@ -235,3 +235,24 @@ def test_a_successful_login_returns_the_session_page():
     )
     page = asyncio.run(client.login())
     assert AirBalticCardAPI._parse_account_credit(page) == 125.0
+
+
+def test_parsing_goes_through_the_supplied_runner():
+    """The blocking parse is handed to the caller's hook, not run inline."""
+    calls = []
+
+    async def run(func, *fargs):
+        calls.append(func.__name__)
+        return func(*fargs)
+
+    client = api_returning(
+        '<a href="/my-account/?customer-logout=true">Log out</a>'
+        '<div class="sideTable_side">'
+        '<div class="sideTable_title">Available credit for account</div>'
+        '<div class="sideTable_text">125,00 EUR</div></div>',
+        run=run,
+    )
+    data = asyncio.run(client.get_sim_cards())
+
+    assert data["account_credit"] == 125.0
+    assert calls == ["_parse_and_check", "_extract"]

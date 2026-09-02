@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import re
+from collections.abc import Awaitable, Callable
 from http import HTTPStatus
 from typing import Any
 
@@ -64,6 +65,11 @@ def parse_amount(text: str) -> float | None:
         return None
 
 
+async def _run_inline(func: Any, *args: Any) -> Any:
+    """Run a blocking callable directly, for callers with no thread pool."""
+    return func(*args)
+
+
 def _describe(err: BaseException) -> str:
     """Return a readable description, since a timeout carries no message."""
     return str(err) or type(err).__name__
@@ -82,15 +88,24 @@ class AirBalticCardAPI:
 
     The caller owns *session*: its cookie jar holds the portal login, so each
     account needs a session of its own.
+
+    Parsing an account page costs hundreds of milliseconds, so *run* is the
+    hook a caller uses to push that work off its own thread. It defaults to
+    running inline, which suits tests and scripts.
     """
 
     def __init__(
-        self, username: str, password: str, session: aiohttp.ClientSession
+        self,
+        username: str,
+        password: str,
+        session: aiohttp.ClientSession,
+        run: Callable[..., Awaitable[Any]] | None = None,
     ) -> None:
-        """Store the credentials and the session used for every request."""
+        """Store the credentials, the session and the blocking-work hook."""
         self._username = username
         self._password = password
         self._session = session
+        self._run = run or _run_inline
 
     async def login(self, soup: BeautifulSoup | None = None) -> BeautifulSoup:
         """Log in and return the parsed response page.
@@ -101,7 +116,8 @@ class AirBalticCardAPI:
         nonce = self._extract_nonce(soup) if soup is not None else None
 
         if not nonce:
-            nonce = self._extract_nonce(await self._fetch_account_page())
+            page, _ = await self._read(await self._get_account_text())
+            nonce = self._extract_nonce(page)
             if not nonce:
                 raise AirBalticCardConnectionError(
                     "Could not retrieve the login nonce from the account page"
@@ -124,8 +140,8 @@ class AirBalticCardAPI:
                 f"Login request failed: {_describe(err)}"
             ) from err
 
-        page = BeautifulSoup(text, "html.parser")
-        if self._is_logged_in(page):
+        page, logged_in = await self._read(text)
+        if logged_in:
             _LOGGER.debug("Logged in to AirBalticCard")
             return page
 
@@ -141,23 +157,37 @@ class AirBalticCardAPI:
     async def get_sim_cards(self) -> dict[str, Any]:
         """Return the account credit and every SIM card on the account."""
         page = await self._fetch_dashboard()
-        sims = self._parse_sims(page)
-        credit = self._parse_account_credit(page)
-
-        _LOGGER.debug("Parsed account credit %s and %d SIM card(s)", credit, len(sims))
-        return {"account_credit": credit, "sims": sims}
+        return await self._run(self._extract, page)
 
     async def _fetch_dashboard(self) -> BeautifulSoup:
         """Return the account page, logging in again if the session expired."""
-        page = await self._fetch_account_page()
-        if self._is_logged_in(page):
+        page, logged_in = await self._read(await self._get_account_text())
+        if logged_in:
             return page
 
         _LOGGER.debug("Session expired, logging in again")
         return await self.login(soup=page)
 
-    async def _fetch_account_page(self) -> BeautifulSoup:
-        """GET the account page and return it parsed."""
+    async def _read(self, text: str) -> tuple[BeautifulSoup, bool]:
+        """Parse a page and say whether it shows a session, off this thread."""
+        return await self._run(self._parse_and_check, text)
+
+    @staticmethod
+    def _parse_and_check(text: str) -> tuple[BeautifulSoup, bool]:
+        """Parse *text* and check it for a session. Blocking; runs via _run."""
+        page = BeautifulSoup(text, "html.parser")
+        return page, AirBalticCardAPI._is_logged_in(page)
+
+    @staticmethod
+    def _extract(page: BeautifulSoup) -> dict[str, Any]:
+        """Pull the account data out of a page. Blocking; runs via _run."""
+        sims = AirBalticCardAPI._parse_sims(page)
+        credit = AirBalticCardAPI._parse_account_credit(page)
+        _LOGGER.debug("Parsed account credit %s and %d SIM card(s)", credit, len(sims))
+        return {"account_credit": credit, "sims": sims}
+
+    async def _get_account_text(self) -> str:
+        """GET the account page and return its body."""
         try:
             async with self._session.get(ACCOUNT_URL, timeout=_TIMEOUT) as resp:
                 if resp.status != HTTPStatus.OK:
@@ -170,7 +200,7 @@ class AirBalticCardAPI:
                 f"Request failed: {_describe(err)}"
             ) from err
 
-        return BeautifulSoup(text, "html.parser")
+        return text
 
     @staticmethod
     def _extract_nonce(soup: BeautifulSoup) -> str | None:
