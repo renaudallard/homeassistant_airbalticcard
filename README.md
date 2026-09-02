@@ -157,6 +157,28 @@ Logs appear in **Settings > System > Logs** or in `home-assistant.log`.
 
 ## Changelog
 
+### Unreleased
+- Deleting a device no longer errors when the integration is not loaded; the
+  action was offered but crashed on the missing runtime data.
+- Entries upgraded from 1.2.x get their unique ID normalised, so the account
+  they already hold is recognised and cannot be added a second time.
+- The account credit is held to the same amount-only check as the SIM
+  balances; text alongside the amount published a garbage figure before.
+- Account pages are parsed in the thread pool instead of on the event loop,
+  which a 12-SIM page was blocking for over 400 ms per poll.
+- A SIM whose stale device was deleted gets its sensors back if it returns.
+- The RuntimeError aiohttp raises on a detached session is contained.
+- The registry migration no longer uses a device lookup Home Assistant is
+  removing in 2027.8, and scopes its search to the config entry.
+- `already_in_progress` is translated.
+- A release is published only after the checks pass, and never with a version
+  older than the one already out.
+- Tests now drive a real Home Assistant across the migration, the SIM
+  lifecycle and the device-removal hook; two parsing tests that passed for the
+  wrong reason were rewritten.
+- README: corrected the entity IDs, the Lovelace example and the claim that
+  credentials are stored encrypted.
+
 ### 1.3.0
 - Fixed the options dialog crashing on Home Assistant 2025.12 and later.
 - Each account now polls with its own HTTP session; two accounts no longer
