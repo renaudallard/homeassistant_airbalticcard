@@ -8,4 +8,6 @@ pytest
 # this is missing. The harness pins the Home Assistant release it was built
 # against, so pin the harness too: resolving it freely picks up whatever is
 # newest, including prereleases its own fixtures do not work with.
+#
+# This pin needs Python 3.14, which is what Home Assistant 2026.8 requires.
 pytest-homeassistant-custom-component==0.13.357

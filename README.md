@@ -178,6 +178,8 @@ Logs appear in **Settings > System > Logs** or in `home-assistant.log`.
   wrong reason were rewritten.
 - README: corrected the entity IDs, the Lovelace example and the claim that
   credentials are stored encrypted.
+- CI runs on actions that target Node 24, and the Home Assistant test harness
+  is pinned so it cannot resolve to a prerelease its own fixtures reject.
 
 ### 1.3.0
 - Fixed the options dialog crashing on Home Assistant 2025.12 and later.
